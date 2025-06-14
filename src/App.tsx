@@ -19,6 +19,8 @@ import ManageAds from "./pages/admin/ManageAds";
 import DonationsLog from "./pages/admin/DonationsLog";
 import ManageAffiliateLinks from "./pages/admin/ManageAffiliateLinks";
 import ManageUsers from "./pages/admin/ManageUsers";
+import Analysis from "./pages/Analysis";
+import AuthGuard from "./components/auth/AuthGuard";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,14 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/trade-ideas/:id" element={<TradeIdeaPage />} />
 
+              {/* Routes for authenticated (non-admin) users */}
+              <Route element={<AuthGuard />}>
+                <Route path="/analysis" element={<Analysis />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/create-ad" element={<CreateAd />} />
+              </Route>
+
+              {/* Admin-only routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
@@ -42,8 +52,6 @@ const App = () => (
                 <Route path="/admin/donations" element={<DonationsLog />} />
                 <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
                 <Route path="/admin/users" element={<ManageUsers />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/create-ad" element={<CreateAd />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
