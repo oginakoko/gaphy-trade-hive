@@ -2,10 +2,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '../_shared/cors.ts'
 
-// Note: This function needs to be deployed to Supabase to work.
-// The Lovable environment will simulate this, but for production,
-// you would run `npx supabase functions deploy update-ad-status`.
-
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -21,11 +17,19 @@ Deno.serve(async (req) => {
         })
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        console.error("Edge Function: Missing Supabase environment variables.");
+        return new Response(JSON.stringify({ error: 'Server is not configured correctly.' }), {
+             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+             status: 500,
+        });
+    }
+
     // Create a Supabase client with the service_role key to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
     // Update the ad status
     const { error } = await supabaseAdmin
@@ -34,6 +38,7 @@ Deno.serve(async (req) => {
       .eq('id', adId)
 
     if (error) {
+      console.error("Edge Function DB Error:", error);
       throw error
     }
 
@@ -42,7 +47,7 @@ Deno.serve(async (req) => {
       status: 200,
     })
   } catch (err) {
-    return new Response(String(err?.message ?? err), {
+    return new Response(JSON.stringify({ error: err?.message ?? 'An unknown server error occurred.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

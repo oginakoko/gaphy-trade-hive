@@ -1,7 +1,7 @@
-
 import Header from '@/components/layout/Header';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FunctionsError } from '@supabase/supabase-js';
 import {
   Table,
   TableBody,
@@ -34,34 +34,41 @@ const ManageAdsPage = () => {
     const navigate = useNavigate();
 
     const updateStatusMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: string, status: Ad['status'] }) => {
+        mutationFn: async ({ id, status }: { id: number, status: Ad['status'] }) => {
             // Call the edge function instead of updating the DB directly
-            const { error } = await supabase.functions.invoke('update-ad-status', {
+            const { data, error } = await supabase.functions.invoke('update-ad-status', {
                 body: { adId: id, status },
             })
             if (error) {
-                // The error from invoke might be a string or an object
-                let errorMessage = 'Failed to update ad status.';
-                if (typeof error === 'string') {
-                    errorMessage = error;
-                } else if (error instanceof Error) {
-                    errorMessage = error.message;
-                } else if (typeof error === 'object' && error !== null && 'message' in error) {
-                    errorMessage = (error as any).message;
-                }
-                throw new Error(errorMessage);
+                throw error;
             }
+            return data;
         },
         onSuccess: () => {
             toast({ title: "Success", description: "Ad status updated." });
             queryClient.invalidateQueries({ queryKey: ['ads'] });
         },
-        onError: (error: any) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+        onError: (error: Error) => {
+            let message = 'An unexpected error occurred.';
+            if (error instanceof FunctionsError) {
+                const functionError = error.context?.error;
+                if (functionError?.message) {
+                    message = functionError.message;
+                } else if (error.message.includes("fetch")) {
+                    message = "Could not connect to the server. Please check the browser console for more details.";
+                } else {
+                    message = error.message;
+                }
+                console.error("FunctionsError context:", error.context);
+            } else {
+                message = error.message;
+            }
+            toast({ title: "Error", description: message, variant: "destructive" });
+            console.error("Full error from mutation:", error);
         }
     });
 
-    const handleUpdateStatus = (id: string, status: Ad['status']) => {
+    const handleUpdateStatus = (id: number, status: Ad['status']) => {
         updateStatusMutation.mutate({ id, status });
     };
 
