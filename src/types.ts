@@ -41,7 +41,10 @@ export type Ad = {
   content: string;
   link_url: string;
   image_url: string | null;
-  status: 'pending_approval' | 'approved' | 'rejected';
+  status: 'pending_payment' | 'pending_approval' | 'approved' | 'rejected';
+  start_date: string | null;
+  end_date: string | null;
+  cost: number | null;
   profiles?: {
     username: string | null;
     avatar_url: string | null;
