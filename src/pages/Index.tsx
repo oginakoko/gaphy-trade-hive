@@ -1,9 +1,10 @@
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { BarChart, Users, BookOpen, ArrowRight } from 'lucide-react';
+import { BarChart, Users, BookOpen, ArrowRight, Bot } from 'lucide-react';
 import TradeTicker from '@/components/landing/TradeTicker';
 import GaphyBot from '@/components/landing/GaphyBot';
+import { useState } from 'react';
 
 const FeatureCard = ({ icon, title, description, index }: { icon: React.ReactNode, title: string, description: string, index: number }) => (
   <div 
@@ -32,6 +33,8 @@ const StepCard = ({ number, title, description }: { number: string, title: strin
 
 
 const Index = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   return (
     <div className="relative overflow-hidden">
       <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_center,_rgba(0,255,163,0.1)_0,_rgba(0,255,163,0)_50%)] -z-10" />
@@ -57,7 +60,14 @@ const Index = () => {
               </div>
             </div>
             <div className="flex justify-center lg:justify-end">
-              <GaphyBot />
+              {/* Placeholder to maintain hero section layout */}
+              <div className="w-full max-w-md h-96 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <div className="text-center text-gray-400">
+                  <Bot className="w-16 h-16 mx-auto mb-4" />
+                  <p>Your AI Assistant lives here.</p>
+                  <p className="text-sm">Click the chat bubble to talk!</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -128,6 +138,25 @@ const Index = () => {
           </footer>
         </div>
       </main>
+
+      {/* Floating Chat Components */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {!isChatOpen && (
+          <Button
+            size="icon"
+            className="rounded-full h-16 w-16 bg-brand-green text-black hover:bg-brand-green/80 shadow-lg transform transition-transform hover:scale-110 animate-fade-in-up"
+            onClick={() => setIsChatOpen(true)}
+          >
+            <Bot className="h-8 w-8" />
+          </Button>
+        )}
+      </div>
+
+      {isChatOpen && (
+        <div className="fixed bottom-6 right-6 z-50">
+            <GaphyBot onClose={() => setIsChatOpen(false)} />
+        </div>
+      )}
     </div>
   );
 };
