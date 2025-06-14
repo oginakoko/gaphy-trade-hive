@@ -9,6 +9,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Input } from '../ui/input';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AdPaymentModalProps {
   ad: Ad | null;
@@ -18,6 +20,8 @@ interface AdPaymentModalProps {
 
 const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
   const [copiedAddress, setCopiedAddress] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -47,6 +51,33 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
     }
   });
 
+  const stkPushMutation = useMutation({
+    mutationFn: async () => {
+        if (!ad) throw new Error("Ad not found.");
+        if (!user) throw new Error("You must be logged in.");
+        if (!phoneNumber) throw new Error("Please enter your M-Pesa phone number.");
+        if (!/^(254)\d{9}$/.test(phoneNumber)) throw new Error("Phone number must be in the format 254xxxxxxxxx.");
+
+        const { data, error } = await supabase.functions.invoke('initiate-stk-push', {
+            body: { 
+                amount: ad.cost, 
+                phone: phoneNumber, 
+                adId: ad.id,
+                userId: user.id,
+                type: 'ad_payment'
+            },
+        })
+        if (error) throw error;
+        return data;
+    },
+    onSuccess: () => {
+        toast({ title: "Request Sent!", description: "Please check your phone to complete the payment by entering your M-Pesa PIN." });
+    },
+    onError: (error: any) => {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  });
+
   if (!ad) return null;
 
   return (
@@ -56,11 +87,33 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
           <DialogTitle className="text-white text-2xl">Complete Ad Payment</DialogTitle>
           <DialogDescription className="text-gray-400">
             To activate your ad "{ad.title}", please send a payment of ${ad.cost?.toFixed(2)}.
-            Once paid, click the confirmation button below.
+            Once paid via Crypto, click the confirmation button below. For M-Pesa, use the STK push.
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4 space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa (STK Push)</h3>
+            <div className="bg-brand-gray-200/50 p-4 rounded-lg space-y-3">
+                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">${ad.cost?.toFixed(2)}</span> to Till <span className="font-bold text-white">{mpesaDetails.till}</span></p>
+                <Input 
+                    type="tel"
+                    placeholder="254xxxxxxxxx"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="bg-brand-gray-100/50 border-brand-green/30"
+                />
+                 <Button 
+                    onClick={() => stkPushMutation.mutate()} 
+                    disabled={stkPushMutation.isPending}
+                    className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80"
+                  >
+                    {stkPushMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Pay with M-Pesa
+                  </Button>
+            </div>
+          </div>
+          
           <div>
             <h3 className="text-lg font-semibold text-brand-green mb-3">Crypto Payments</h3>
             <div className="space-y-2">
@@ -77,26 +130,21 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
               ))}
             </div>
           </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa</h3>
-            <div className="bg-brand-gray-200/50 p-4 rounded-lg text-center">
-                <p className="text-gray-300">Till Number:</p>
-                <p className="text-2xl font-bold text-white tracking-widest my-1">{mpesaDetails.till}</p>
-                 <p className="text-xs text-gray-500 mt-2">Use Ad ID <span className="font-bold text-gray-300">#{ad.id}</span> as the account number.</p>
-            </div>
-          </div>
         </div>
 
         <DialogFooter>
-          <Button 
-            onClick={() => updateStatusMutation.mutate()} 
-            disabled={updateStatusMutation.isPending}
-            className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80"
-          >
-            {updateStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            I Have Paid
-          </Button>
+          <div className="w-full space-y-2">
+            <p className="text-center text-xs text-gray-400">For crypto payments only:</p>
+            <Button 
+              onClick={() => updateStatusMutation.mutate()} 
+              disabled={updateStatusMutation.isPending}
+              className="w-full"
+              variant="outline"
+            >
+              {updateStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              I Have Paid (Crypto)
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

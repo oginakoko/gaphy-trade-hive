@@ -1,8 +1,13 @@
 
 import React, { useState } from 'react';
 import { donationWallets, mpesaDetails } from '@/data/mockData';
-import { X, Copy, Check } from 'lucide-react';
+import { X, Copy, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from './ui/input';
+import { useMutation } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from './ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DonationModalProps {
   isOpen: boolean;
@@ -11,12 +16,41 @@ interface DonationModalProps {
 
 const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
   const [copiedAddress, setCopiedAddress] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [amount, setAmount] = useState('10');
+  const { user } = useAuth();
 
   const handleCopy = (address: string) => {
     navigator.clipboard.writeText(address);
     setCopiedAddress(address);
     setTimeout(() => setCopiedAddress(''), 2000);
   };
+
+  const stkPushMutation = useMutation({
+    mutationFn: async () => {
+        if (!amount || Number(amount) <= 0) throw new Error("Please enter a valid amount.");
+        if (!phoneNumber) throw new Error("Please enter your M-Pesa phone number.");
+        if (!/^(254)\d{9}$/.test(phoneNumber)) throw new Error("Phone number must be in the format 254xxxxxxxxx.");
+
+        const { data, error } = await supabase.functions.invoke('initiate-stk-push', {
+            body: {
+                amount: Number(amount),
+                phone: phoneNumber,
+                userId: user?.id,
+                type: 'donation'
+            },
+        })
+        if (error) throw error;
+        return data;
+    },
+    onSuccess: () => {
+        toast({ title: "Request Sent!", description: "Please check your phone to complete the payment by entering your M-Pesa PIN." });
+        onClose();
+    },
+    onError: (error: any) => {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  });
 
   if (!isOpen) return null;
 
@@ -33,6 +67,36 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
           </div>
 
           <div className="mt-6">
+            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa Donation</h3>
+            <div className="bg-brand-gray-200/50 p-4 rounded-lg space-y-3">
+                 <div className="grid grid-cols-2 gap-3">
+                    <Input 
+                        type="number"
+                        placeholder="Amount (KES)"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="bg-brand-gray-100/50 border-brand-green/30"
+                    />
+                    <Input 
+                        type="tel"
+                        placeholder="254xxxxxxxxx"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="bg-brand-gray-100/50 border-brand-green/30"
+                    />
+                 </div>
+                <Button 
+                    onClick={() => stkPushMutation.mutate()} 
+                    disabled={stkPushMutation.isPending}
+                    className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80"
+                  >
+                    {stkPushMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Donate with M-Pesa
+                  </Button>
+            </div>
+          </div>
+          
+          <div className="mt-6">
             <h3 className="text-lg font-semibold text-brand-green mb-3">Crypto Donations</h3>
             <div className="space-y-2">
               {donationWallets.map((wallet) => (
@@ -46,18 +110,6 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa</h3>
-            <div className="bg-brand-gray-200/50 p-4 rounded-lg text-center">
-                <p className="text-gray-300">Paybill / Till Number:</p>
-                <p className="text-2xl font-bold text-white tracking-widest my-1">{mpesaDetails.till}</p>
-                <Button className="mt-2 w-full bg-brand-green text-black font-bold hover:bg-brand-green/80">
-                  Donate with M-Pesa
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">STK Push will be initiated. Requires Safaricom Daraja API integration.</p>
             </div>
           </div>
 
