@@ -13,3 +13,15 @@ export type TradeIdea = {
     avatar_url: string | null;
   } | null;
 };
+
+export type Comment = {
+  id: string;
+  created_at: string;
+  content: string;
+  trade_idea_id: string;
+  user_id: string;
+  profiles: {
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+};

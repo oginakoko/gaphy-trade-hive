@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Comments from '@/components/comments/Comments';
 
 const fetchTradeIdea = async (id: string): Promise<TradeIdea> => {
   const { data, error } = await supabase
@@ -57,29 +57,32 @@ const TradeIdeaPage = () => {
           )}
           {error && <p className="text-center text-red-500 p-8 glass-card">Error loading trade idea: {(error as Error).message}</p>}
           {idea && (
-             <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
-                {idea.image_url && <img src={idea.image_url} alt={idea.title} className="w-full h-auto max-h-[500px] object-cover" />}
-                <div className="p-6 md:p-10">
-                    <div className="flex items-center gap-3 mb-4">
-                        <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
-                        <div>
-                            <p className="font-bold text-white">{authorName}</p>
-                            <p className="text-sm text-brand-green">{idea.instrument}</p>
+             <>
+                <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
+                    {idea.image_url && <img src={idea.image_url} alt={idea.title} className="w-full h-auto max-h-[500px] object-cover" />}
+                    <div className="p-6 md:p-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
+                            <div>
+                                <p className="font-bold text-white">{authorName}</p>
+                                <p className="text-sm text-brand-green">{idea.instrument}</p>
+                            </div>
+                        </div>
+                        <h1 className="text-3xl lg:text-4xl font-bold text-gray-200 mb-6">{idea.title}</h1>
+                        <div className="prose prose-lg prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{idea.breakdown}</ReactMarkdown>
+                        </div>
+                        <div className="flex gap-2 flex-wrap mt-8">
+                            {idea.tags?.map(tag => (
+                            <span key={tag} className="bg-brand-gray-200 text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full">
+                                {tag}
+                            </span>
+                            ))}
                         </div>
                     </div>
-                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-200 mb-6">{idea.title}</h1>
-                    <div className="prose prose-lg prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{idea.breakdown}</ReactMarkdown>
-                    </div>
-                     <div className="flex gap-2 flex-wrap mt-8">
-                        {idea.tags?.map(tag => (
-                        <span key={tag} className="bg-brand-gray-200 text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full">
-                            {tag}
-                        </span>
-                        ))}
-                    </div>
                 </div>
-            </div>
+                <Comments tradeIdeaId={idea.id} />
+             </>
           )}
         </div>
       </main>
