@@ -10,11 +10,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { TradeIdea } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     const { data, error } = await supabase
         .from('trade_ideas')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles(username, avatar_url), likes(count)')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -28,10 +29,27 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
 
 const Index = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
+  const { user } = useAuth();
   const { data: tradeIdeas, isLoading, error } = useQuery({
     queryKey: ['tradeIdeas'], 
     queryFn: fetchTradeIdeas
   });
+
+  const { data: userLikesData } = useQuery({
+    queryKey: ['userLikes', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('likes')
+        .select('trade_idea_id')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data.map((like) => like.trade_idea_id);
+    },
+    enabled: !!user,
+  });
+
+  const userLikes = new Set(userLikesData);
 
   return (
     <>
@@ -45,9 +63,18 @@ const Index = () => {
             </>
           )}
           {error && <p className="text-center text-red-500 p-8 glass-card">Error loading trade ideas: {(error as Error).message}</p>}
-          {tradeIdeas?.map((idea) => (
-            <TradeIdeaCard key={idea.id} idea={idea} />
-          ))}
+          {tradeIdeas?.map((idea) => {
+            const likesCount = idea.likes?.[0]?.count || 0;
+            const userHasLiked = userLikes.has(Number(idea.id));
+            return (
+              <TradeIdeaCard
+                key={idea.id}
+                idea={idea}
+                likesCount={likesCount}
+                userHasLiked={userHasLiked}
+              />
+            );
+          })}
           {tradeIdeas?.length === 0 && !isLoading && !error && (
             <div className="glass-card rounded-xl p-8 text-center">
               <h3 className="text-xl font-bold text-white mb-2">No Trade Ideas Yet</h3>

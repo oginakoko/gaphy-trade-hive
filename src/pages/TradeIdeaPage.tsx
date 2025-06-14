@@ -10,11 +10,13 @@ import remarkGfm from 'remark-gfm';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Comments from '@/components/comments/Comments';
+import { useAuth } from '@/hooks/useAuth';
+import LikeButton from '@/components/trade-ideas/LikeButton';
 
 const fetchTradeIdea = async (id: string): Promise<TradeIdea> => {
   const { data, error } = await supabase
     .from('trade_ideas')
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles(username, avatar_url), likes(count)')
     .eq('id', id)
     .single();
 
@@ -26,11 +28,28 @@ const fetchTradeIdea = async (id: string): Promise<TradeIdea> => {
 
 const TradeIdeaPage = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ['tradeIdea', id],
     queryFn: () => fetchTradeIdea(id!),
     enabled: !!id,
+  });
+
+  const { data: userHasLiked, isLoading: isLoadingUserLike } = useQuery({
+    queryKey: ['userLikes', user?.id, id],
+    queryFn: async () => {
+      if (!user || !id) return false;
+      const { data, error } = await supabase
+        .from('likes')
+        .select('trade_idea_id')
+        .eq('user_id', user.id)
+        .eq('trade_idea_id', Number(id))
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!user && !!id,
   });
 
   const authorName = idea?.profiles?.username || 'Anonymous';
@@ -61,12 +80,21 @@ const TradeIdeaPage = () => {
                 <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
                     {idea.image_url && <img src={idea.image_url} alt={idea.title} className="w-full h-auto max-h-[500px] object-cover" />}
                     <div className="p-6 md:p-10">
-                        <div className="flex items-center gap-3 mb-4">
-                            <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
-                            <div>
-                                <p className="font-bold text-white">{authorName}</p>
-                                <p className="text-sm text-brand-green">{idea.instrument}</p>
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-3">
+                                <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
+                                <div>
+                                    <p className="font-bold text-white">{authorName}</p>
+                                    <p className="text-sm text-brand-green">{idea.instrument}</p>
+                                </div>
                             </div>
+                            {!isLoadingUserLike && id && (
+                                <LikeButton
+                                    tradeIdeaId={id}
+                                    initialLikesCount={idea.likes?.[0]?.count || 0}
+                                    initialIsLiked={!!userHasLiked}
+                                />
+                            )}
                         </div>
                         <h1 className="text-3xl lg:text-4xl font-bold text-gray-200 mb-6">{idea.title}</h1>
                         <div className="prose prose-lg prose-invert max-w-none">

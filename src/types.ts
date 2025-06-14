@@ -12,6 +12,7 @@ export type TradeIdea = {
     username: string | null;
     avatar_url: string | null;
   } | null;
+  likes?: { count: number }[];
 };
 
 export type Comment = {
