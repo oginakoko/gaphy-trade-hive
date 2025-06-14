@@ -14,6 +14,8 @@ import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import TradeIdeaPage from "./pages/TradeIdeaPage";
 import ProfilePage from "./pages/Profile";
+import CreateAd from "./pages/CreateAd";
+import ManageAds from "./pages/admin/ManageAds";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +35,9 @@ const App = () => (
               <Route element={<ProtectedRoute />}>
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
+                <Route path="/admin/ads" element={<ManageAds />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/create-ad" element={<CreateAd />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

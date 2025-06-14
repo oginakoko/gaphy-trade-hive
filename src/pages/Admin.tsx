@@ -20,14 +20,16 @@ const AdminPage = () => {
             </Card>
           </Link>
 
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">Approve Ads</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-400">Review and approve or reject user-submitted ads.</p>
-            </CardContent>
-          </Card>
+          <Link to="/admin/ads">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">Approve Ads</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">Review and approve or reject user-submitted ads.</p>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card className="glass-card">
             <CardHeader>

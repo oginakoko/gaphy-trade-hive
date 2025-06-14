@@ -1,4 +1,3 @@
-
 export type TradeIdea = {
   id: string;
   created_at: string;
@@ -32,4 +31,19 @@ export type Profile = {
   username: string | null;
   avatar_url: string | null;
   updated_at: string;
+};
+
+export type Ad = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  title: string;
+  content: string;
+  link_url: string;
+  image_url: string | null;
+  status: 'pending_approval' | 'approved' | 'rejected';
+  profiles?: {
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
 };

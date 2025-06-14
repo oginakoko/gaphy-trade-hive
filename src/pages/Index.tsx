@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/layout/Header';
 import AffiliateLinks from '@/components/AffiliateLinks';
@@ -11,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { TradeIdea } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     const { data, error } = await supabase
@@ -87,8 +87,8 @@ const Index = () => {
           <div className="glass-card rounded-xl p-6 text-center">
             <h3 className="text-xl font-bold text-white mb-2">Post Your Ad</h3>
             <p className="text-gray-400 mb-4">Reach a dedicated audience of traders and investors.</p>
-             <Button className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80">
-              Create an Ad
+             <Button asChild className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80">
+              <Link to="/create-ad">Create an Ad</Link>
             </Button>
             <p className="text-xs text-gray-500 mt-2">Requires payment and admin approval.</p>
           </div>
