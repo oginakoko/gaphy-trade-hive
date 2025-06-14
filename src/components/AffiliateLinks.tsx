@@ -34,7 +34,7 @@ const AffiliateLinks = () => {
     queryFn: fetchAffiliateLinks
   });
   return <div className="glass-card rounded-xl p-6">
-      <h3 className="text-xl font-bold text-white mb-4">                                                ADS</h3>
+      
       <div className="space-y-4">
         {isLoading ? Array.from({
         length: 3
