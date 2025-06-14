@@ -1,4 +1,3 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { TradeIdea } from '@/types';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -30,44 +30,57 @@ type TradeIdeaFormValues = z.infer<typeof formSchema>;
 
 interface TradeIdeaFormProps {
   setOpen: (open: boolean) => void;
+  initialData?: TradeIdea | null;
 }
 
-const TradeIdeaForm = ({ setOpen }: TradeIdeaFormProps) => {
+const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const form = useForm<TradeIdeaFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: '',
-      instrument: '',
-      breakdown: '',
-      image_url: '',
-      tags: '',
+      title: initialData?.title || '',
+      instrument: initialData?.instrument || '',
+      breakdown: initialData?.breakdown || '',
+      image_url: initialData?.image_url || '',
+      tags: initialData?.tags?.join(', ') || '',
     },
   });
 
-  const addTradeIdeaMutation = useMutation({
-    mutationFn: async (newIdea: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
-      if (!user) throw new Error("You must be logged in to post a trade idea.");
-      
-      const { error } = await supabase.from('trade_ideas').insert([{
-        ...newIdea,
-        profile_id: user.id,
-      }]);
+  const isEditing = !!initialData;
 
-      if (error) {
-        throw new Error(error.message);
+  const mutation = useMutation({
+    mutationFn: async (ideaData: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
+      if (!user) throw new Error("You must be logged in to perform this action.");
+
+      const dataToUpsert = {
+        ...ideaData,
+        image_url: ideaData.image_url || null,
+      };
+
+      if (isEditing) {
+        const { error } = await supabase
+          .from('trade_ideas')
+          .update(dataToUpsert)
+          .eq('id', initialData.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from('trade_ideas').insert([{
+          ...dataToUpsert,
+          profile_id: user.id,
+        }]);
+        if (error) throw new Error(error.message);
       }
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Trade idea has been posted.' });
+      toast({ title: 'Success', description: `Trade idea has been ${isEditing ? 'updated' : 'posted'}.` });
       queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
       setOpen(false);
       form.reset();
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error posting idea',
+        title: `Error ${isEditing ? 'updating' : 'posting'} idea`,
         description: error.message,
         variant: 'destructive',
       });
@@ -76,7 +89,7 @@ const TradeIdeaForm = ({ setOpen }: TradeIdeaFormProps) => {
 
   function onSubmit(values: TradeIdeaFormValues) {
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) ?? [];
-    addTradeIdeaMutation.mutate({ ...values, tags: tagsArray });
+    mutation.mutate({ ...values, tags: tagsArray });
   }
 
   return (
@@ -147,8 +160,8 @@ const TradeIdeaForm = ({ setOpen }: TradeIdeaFormProps) => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80" disabled={addTradeIdeaMutation.isPending}>
-          {addTradeIdeaMutation.isPending ? 'Posting...' : 'Post Trade Idea'}
+        <Button type="submit" className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80" disabled={mutation.isPending}>
+          {mutation.isPending ? (isEditing ? 'Updating...' : 'Posting...') : (isEditing ? 'Update Trade Idea' : 'Post Trade Idea')}
         </Button>
       </form>
     </Form>

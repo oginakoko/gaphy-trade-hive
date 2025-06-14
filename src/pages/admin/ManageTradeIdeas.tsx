@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
   TableBody,
@@ -17,21 +17,22 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
+import { TradeIdea } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
-type TradeIdea = {
-  id: string;
-  created_at: string;
-  title: string;
-  instrument: string;
-  breakdown: string;
-  image_url: string | null;
-  tags: string[] | null;
-  profile_id: string | null;
-};
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     const { data, error } = await supabase
@@ -46,11 +47,50 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
 };
 
 const ManageTradeIdeasPage = () => {
+    const queryClient = useQueryClient();
     const [isFormOpen, setFormOpen] = useState(false);
+    const [editingIdea, setEditingIdea] = useState<TradeIdea | null>(null);
+    const [ideaToDelete, setIdeaToDelete] = useState<TradeIdea | null>(null);
+
     const { data: tradeIdeas, isLoading, error } = useQuery({
         queryKey: ['tradeIdeas'], 
         queryFn: fetchTradeIdeas
     });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (ideaId: string) => {
+            const { error } = await supabase.from('trade_ideas').delete().eq('id', ideaId);
+            if (error) {
+                throw new Error(error.message);
+            }
+        },
+        onSuccess: () => {
+            toast({ title: "Success", description: "Trade idea deleted." });
+            queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
+            setIdeaToDelete(null);
+        },
+        onError: (error: Error) => {
+            toast({ title: "Error deleting idea", description: error.message, variant: "destructive" });
+            setIdeaToDelete(null);
+        }
+    });
+
+    const handleNew = () => {
+        setEditingIdea(null);
+        setFormOpen(true);
+    };
+
+    const handleEdit = (idea: TradeIdea) => {
+        setEditingIdea(idea);
+        setFormOpen(true);
+    };
+    
+    const handleFormOpenChange = (open: boolean) => {
+        setFormOpen(open);
+        if (!open) {
+            setEditingIdea(null);
+        }
+    };
 
     return (
         <>
@@ -58,21 +98,20 @@ const ManageTradeIdeasPage = () => {
             <div className="py-8 animate-fade-in-up container mx-auto px-4">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold text-white">Manage Trade Ideas</h1>
-                    <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-brand-green text-black font-bold hover:bg-brand-green/80 flex items-center gap-2">
-                                <PlusCircle size={20} />
-                                New Trade Idea
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-card border-brand-green/20">
-                            <DialogHeader>
-                                <DialogTitle className="text-white">Create a New Trade Idea</DialogTitle>
-                            </DialogHeader>
-                            <TradeIdeaForm setOpen={setFormOpen} />
-                        </DialogContent>
-                    </Dialog>
+                    <Button onClick={handleNew} className="bg-brand-green text-black font-bold hover:bg-brand-green/80 flex items-center gap-2">
+                        <PlusCircle size={20} />
+                        New Trade Idea
+                    </Button>
                 </div>
+
+                <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
+                    <DialogContent className="glass-card border-brand-green/20">
+                        <DialogHeader>
+                            <DialogTitle className="text-white">{editingIdea ? 'Edit' : 'Create a New'} Trade Idea</DialogTitle>
+                        </DialogHeader>
+                        <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />
+                    </DialogContent>
+                </Dialog>
                 
                 <div className="glass-card p-0 overflow-hidden">
                     {isLoading && <p className="text-center text-gray-400 p-8">Loading trade ideas...</p>}
@@ -94,8 +133,12 @@ const ManageTradeIdeasPage = () => {
                                         <TableCell className="text-brand-green">{idea.instrument}</TableCell>
                                         <TableCell className="text-gray-400">{new Date(idea.created_at).toLocaleDateString()}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">Edit</Button>
-                                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400">Delete</Button>
+                                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => handleEdit(idea)}>
+                                                <Edit size={16} />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400" onClick={() => setIdeaToDelete(idea)}>
+                                                <Trash2 size={16} />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -105,6 +148,27 @@ const ManageTradeIdeasPage = () => {
                      {tradeIdeas?.length === 0 && !isLoading && <p className="text-center text-gray-400 p-8">No trade ideas found. Add one to get started!</p>}
                 </div>
             </div>
+
+            <AlertDialog open={!!ideaToDelete} onOpenChange={(open) => !open && setIdeaToDelete(null)}>
+                <AlertDialogContent className="glass-card">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            This action cannot be undone. This will permanently delete the trade idea titled "{ideaToDelete?.title}".
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="text-white" onClick={() => setIdeaToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            className="bg-red-600 hover:bg-red-700 text-white" 
+                            onClick={() => ideaToDelete && deleteMutation.mutate(ideaToDelete.id)}
+                            disabled={deleteMutation.isPending}
+                        >
+                            {deleteMutation.isPending ? "Deleting..." : "Yes, delete it"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };
