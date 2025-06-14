@@ -33,6 +33,8 @@ export type Profile = {
   username: string | null;
   avatar_url: string | null;
   updated_at: string;
+  role?: 'admin' | 'user';
+  is_banned?: boolean;
 };
 
 export type Ad = {

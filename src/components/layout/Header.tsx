@@ -1,4 +1,3 @@
-
 import { socialLinks } from '@/data/mockData';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,14 +26,14 @@ const Header = () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, avatar_url')
+        .select('*')
         .eq('id', user.id)
         .single();
       
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
       }
-      return data as Pick<Profile, 'username' | 'avatar_url'> | null;
+      return data as Profile | null;
     },
     enabled: !!user,
   });
@@ -89,7 +88,7 @@ const Header = () => {
                     <span>Profile Settings</span>
                   </Link>
                 </DropdownMenuItem>
-                {user?.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
+                {profile?.role === 'admin' && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin" className="cursor-pointer">
                       <Shield className="mr-2 h-4 w-4" />
