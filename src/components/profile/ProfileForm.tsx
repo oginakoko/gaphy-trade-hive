@@ -79,7 +79,7 @@ const ProfileForm = () => {
             toast({ title: "Success", description: "Profile updated successfully." });
             queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
             queryClient.invalidateQueries({ queryKey: ['trade_ideas'] });
-            queryClient.invalidateQueries({ queryKey: { prefix: 'trade-idea-detail' } });
+            queryClient.invalidateQueries({ queryKey: ['trade-idea-detail'] });
         },
         onError: (error: any) => {
             toast({ title: "Error updating profile", description: error.message, variant: "destructive" });
