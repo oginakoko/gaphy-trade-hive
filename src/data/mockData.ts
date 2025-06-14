@@ -77,6 +77,7 @@ export const donationWallets = [
 ];
 
 export const mpesaDetails = {
-  till: '3629008',
+  paybill: '3629008',
+  account: 'DONATION',
   name: 'GaphyHive Donations',
 };
