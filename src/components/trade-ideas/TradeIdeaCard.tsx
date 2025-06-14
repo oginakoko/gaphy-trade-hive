@@ -2,6 +2,8 @@
 import { TradeIdea } from '@/types';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface TradeIdeaCardProps {
   idea: TradeIdea;
@@ -28,7 +30,11 @@ const TradeIdeaCard = ({ idea }: TradeIdeaCardProps) => {
             </div>
             </div>
             <h3 className="text-xl font-bold text-gray-300 mb-2 group-hover:text-white transition-colors">{idea.title}</h3>
-            <p className="text-gray-400 text-sm mb-4 flex-grow">{snippet.replace(/#/g, '')}</p>
+            <div className="prose prose-sm prose-invert text-gray-400 mb-4 flex-grow max-w-none overflow-hidden">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {snippet}
+              </ReactMarkdown>
+            </div>
 
             <div className="flex items-center justify-between text-gray-400 mt-auto pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2">
