@@ -35,8 +35,22 @@ const ManageAdsPage = () => {
 
     const updateStatusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string, status: Ad['status'] }) => {
-            const { error } = await supabase.from('ads').update({ status }).eq('id', id);
-            if (error) throw error;
+            // Call the edge function instead of updating the DB directly
+            const { error } = await supabase.functions.invoke('update-ad-status', {
+                body: { adId: id, status },
+            })
+            if (error) {
+                // The error from invoke might be a string or an object
+                let errorMessage = 'Failed to update ad status.';
+                if (typeof error === 'string') {
+                    errorMessage = error;
+                } else if (error instanceof Error) {
+                    errorMessage = error.message;
+                } else if (typeof error === 'object' && error !== null && 'message' in error) {
+                    errorMessage = (error as any).message;
+                }
+                throw new Error(errorMessage);
+            }
         },
         onSuccess: () => {
             toast({ title: "Success", description: "Ad status updated." });
@@ -90,22 +104,22 @@ const ManageAdsPage = () => {
                                                 'bg-green-600 text-white': ad.status === 'approved',
                                                 'text-yellow-400 border-yellow-400': ad.status === 'pending_payment'
                                             })}>
-                                                {ad.status.replace('_', ' ')}
+                                                {ad.status.replace(/_/g, ' ')}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {ad.status === 'pending_payment' && (
-                                                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(ad.id, 'pending_approval')}>
+                                                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(ad.id, 'pending_approval')} disabled={updateStatusMutation.isPending}>
                                                     Confirm Payment
                                                 </Button>
                                             )}
                                             {ad.status === 'pending_approval' && (
                                                 <div className="flex gap-2 justify-end">
-                                                    <Button variant="ghost" size="sm" className="text-green-500 hover:text-green-400" onClick={() => handleUpdateStatus(ad.id, 'approved')}>
+                                                    <Button variant="ghost" size="sm" className="text-green-500 hover:text-green-400" onClick={() => handleUpdateStatus(ad.id, 'approved')} disabled={updateStatusMutation.isPending}>
                                                         <CheckCircle size={16} />
                                                         Approve
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400" onClick={() => handleUpdateStatus(ad.id, 'rejected')}>
+                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400" onClick={() => handleUpdateStatus(ad.id, 'rejected')} disabled={updateStatusMutation.isPending}>
                                                         <XCircle size={16} />
                                                         Reject
                                                     </Button>
