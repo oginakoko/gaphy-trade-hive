@@ -8,7 +8,7 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from './ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import QRCode from 'qrcode.react';
+import { QRCodeCanvas as QRCode } from 'qrcode.react';
 import { cn } from '@/lib/utils';
 
 interface DonationModalProps {
