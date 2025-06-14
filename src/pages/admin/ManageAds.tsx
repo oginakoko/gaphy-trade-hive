@@ -1,3 +1,4 @@
+
 import Header from '@/components/layout/Header';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,7 +34,7 @@ const ManageAdsPage = () => {
     const navigate = useNavigate();
 
     const updateStatusMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: string, status: 'approved' | 'rejected' }) => {
+        mutationFn: async ({ id, status }: { id: string, status: Ad['status'] }) => {
             const { error } = await supabase.from('ads').update({ status }).eq('id', id);
             if (error) throw error;
         },
@@ -46,7 +47,7 @@ const ManageAdsPage = () => {
         }
     });
 
-    const handleUpdateStatus = (id: string, status: 'approved' | 'rejected') => {
+    const handleUpdateStatus = (id: string, status: Ad['status']) => {
         updateStatusMutation.mutate({ id, status });
     };
 
@@ -93,6 +94,11 @@ const ManageAdsPage = () => {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
+                                            {ad.status === 'pending_payment' && (
+                                                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(ad.id, 'pending_approval')}>
+                                                    Confirm Payment
+                                                </Button>
+                                            )}
                                             {ad.status === 'pending_approval' && (
                                                 <div className="flex gap-2 justify-end">
                                                     <Button variant="ghost" size="sm" className="text-green-500 hover:text-green-400" onClick={() => handleUpdateStatus(ad.id, 'approved')}>
