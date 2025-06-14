@@ -7,7 +7,7 @@ export type TradeIdea = {
   breakdown: string;
   image_url: string | null;
   tags: string[] | null;
-  profile_id: string | null;
+  user_id: string | null;
   profiles?: {
     username: string | null;
     avatar_url: string | null;

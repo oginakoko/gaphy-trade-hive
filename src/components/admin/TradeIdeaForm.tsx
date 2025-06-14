@@ -70,7 +70,7 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
       } else {
         const { error } = await supabase.from('trade_ideas').insert([{
           ...dataToUpsert,
-          profile_id: user.id,
+          user_id: user.id,
         }]);
         if (error) throw new Error(error.message);
       }
