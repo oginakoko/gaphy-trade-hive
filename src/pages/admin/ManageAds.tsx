@@ -1,4 +1,3 @@
-
 import Header from '@/components/layout/Header';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 const fetchAds = async (): Promise<Ad[]> => {
     const { data, error } = await supabase
@@ -82,8 +82,13 @@ const ManageAdsPage = () => {
                                         <TableCell>
                                             <Badge variant={
                                                 ad.status === 'approved' ? 'default' :
-                                                ad.status === 'rejected' ? 'destructive' : 'secondary'
-                                            } className={ad.status === 'approved' ? 'bg-green-600' : ''}>
+                                                ad.status === 'rejected' ? 'destructive' :
+                                                ad.status === 'pending_approval' ? 'secondary' :
+                                                'outline' // for pending_payment
+                                            } className={cn({
+                                                'bg-green-600 text-white': ad.status === 'approved',
+                                                'text-yellow-400 border-yellow-400': ad.status === 'pending_payment'
+                                            })}>
                                                 {ad.status.replace('_', ' ')}
                                             </Badge>
                                         </TableCell>

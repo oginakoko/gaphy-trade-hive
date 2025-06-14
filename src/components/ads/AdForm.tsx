@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -74,14 +75,14 @@ export const AdForm = () => {
                 ...values,
                 user_id: user.id,
                 cost: totalCost,
-                status: 'pending_approval', // We will handle payment later. For now, it goes to pending approval.
+                status: 'pending_payment', // Ad is created and awaits payment
             }).select();
 
             if (error) throw error;
             return data;
         },
         onSuccess: () => {
-            toast({ title: "Ad Submitted!", description: "Your ad has been submitted for approval." });
+            toast({ title: "Ad Submitted!", description: "Your ad is now pending payment." });
             queryClient.invalidateQueries({ queryKey: ['ads'] });
             navigate('/');
         },
@@ -91,8 +92,7 @@ export const AdForm = () => {
     });
 
     function onSubmit(data: AdFormValues) {
-        // Here we would typically navigate to a payment page/modal.
-        // For now, we'll proceed with creating the ad record.
+        // We will add payment logic here later.
         createAdMutation.mutate(data);
     }
 
@@ -250,7 +250,7 @@ export const AdForm = () => {
 
                 <Button type="submit" disabled={createAdMutation.isPending || totalCost <= 0} className="w-full">
                     {createAdMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit for Approval
+                    Submit Ad
                 </Button>
             </form>
         </Form>
