@@ -37,9 +37,12 @@
   }
   
   .prose-invert {
+    --tw-prose-body: theme(colors.gray.300);
     --tw-prose-headings: theme(colors.brand-green);
     --tw-prose-links: theme(colors.brand-green);
-    --tw-prose-bold: theme(colors.white);
+    --tw-prose-bold: theme(colors.brand-green);
+    --tw-prose-bullets: theme(colors.gray.500);
+    --tw-prose-hr: theme(colors.white / 0.1);
   }
 }
 

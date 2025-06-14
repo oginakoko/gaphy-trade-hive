@@ -1,4 +1,3 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -116,7 +115,12 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
 
   function onSubmit(values: TradeIdeaFormValues) {
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) ?? [];
-    mutation.mutate({ ...values, tags: tagsArray });
+    const capitalizedTitle = values.title
+      .split(' ')
+      .map(word => word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '')
+      .join(' ');
+
+    mutation.mutate({ ...values, title: capitalizedTitle, tags: tagsArray });
   }
 
   return (

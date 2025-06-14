@@ -12,6 +12,7 @@ import MainLayout from "./components/layout/MainLayout";
 import { AuthProvider } from "./context/AuthContext";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import TradeIdeaPage from "./pages/TradeIdeaPage";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/trade-ideas/:id" element={<TradeIdeaPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/admin" element={<Admin />} />
