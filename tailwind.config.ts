@@ -18,7 +18,17 @@ export default {
 			}
 		},
 		extend: {
+      fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+      },
 			colors: {
+        'brand-green': '#00FFA3',
+        'brand-gray': {
+          100: '#1A1A1A',
+          200: '#2C2C2C',
+          300: '#404040',
+          400: '#555555',
+        },
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -84,11 +94,22 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+        'fade-in-up': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(20px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          },
+        }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+        'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
 			}
 		}
 	},
