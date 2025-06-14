@@ -1,24 +1,29 @@
 
 import React, { useState } from 'react';
 import { donationWallets, mpesaDetails } from '@/data/mockData';
-import { X, Copy, Check, Loader2 } from 'lucide-react';
+import { X, Copy, Check, Loader2, Bitcoin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from './ui/input';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from './ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import QRCode from 'qrcode.react';
+import { cn } from '@/lib/utils';
 
 interface DonationModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type Wallet = typeof donationWallets[0];
+
 const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
   const [copiedAddress, setCopiedAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('10');
   const { user } = useAuth();
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
 
   const handleCopy = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -54,6 +59,7 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
 
   const handleClose = () => {
     stkPushMutation.reset();
+    setSelectedWallet(null);
     onClose();
   };
 
@@ -112,19 +118,43 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
           
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-brand-green mb-3">Crypto Donations</h3>
-            <div className="space-y-2">
+             <p className="text-gray-400 text-sm mb-4 text-center">Select a currency to see the deposit address.</p>
+            <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap mb-4">
               {donationWallets.map((wallet) => (
-                <div key={wallet.name} className="bg-brand-gray-200/50 p-3 rounded-lg">
-                  <p className="text-sm font-medium text-gray-300">{wallet.name}</p>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className="text-xs text-brand-green break-all">{wallet.address}</p>
-                    <button onClick={() => handleCopy(wallet.address)} className="text-gray-400 hover:text-white flex-shrink-0">
-                      {copiedAddress === wallet.address ? <Check size={16} className="text-brand-green" /> : <Copy size={16} />}
+                <button
+                  key={wallet.name}
+                  onClick={() => setSelectedWallet(wallet === selectedWallet ? null : wallet)}
+                  className={cn(
+                    "h-14 w-14 sm:h-16 sm:w-16 rounded-full flex items-center justify-center transition-all duration-300 font-bold",
+                    selectedWallet?.name === wallet.name
+                      ? 'bg-brand-green text-black scale-110'
+                      : 'bg-brand-gray-200/50 text-white hover:bg-brand-gray-200/80'
+                  )}
+                  title={wallet.name}
+                >
+                  {wallet.name === 'BTC' ? <Bitcoin size={28} /> : wallet.name.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+
+            {selectedWallet && (
+              <div className="bg-brand-gray-200/50 p-4 rounded-lg text-center animate-fade-in">
+                 <div className="flex justify-center mb-3">
+                    <div className="p-2 bg-white rounded-lg">
+                        <QRCode value={selectedWallet.address} size={128} bgColor="#FFFFFF" fgColor="#000000" />
+                    </div>
+                </div>
+                <div className="relative bg-brand-gray-100/50 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-gray-300 mb-1">{selectedWallet.name} Address</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-brand-green break-all pr-8">{selectedWallet.address}</p>
+                    <button onClick={() => handleCopy(selectedWallet.address)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white flex-shrink-0">
+                      {copiedAddress === selectedWallet.address ? <Check size={16} className="text-brand-green" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
         </div>
