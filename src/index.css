@@ -38,12 +38,12 @@
   
   .prose-invert {
     --tw-prose-body: theme(colors.gray.300);
-    --tw-prose-headings: theme(colors.brand-green);
-    --tw-prose-links: theme(colors.brand-green);
-    --tw-prose-bold: theme(colors.brand-green);
+    --tw-prose-headings: hsl(var(--primary));
+    --tw-prose-links: hsl(var(--primary));
+    --tw-prose-bold: hsl(var(--primary));
     --tw-prose-bullets: theme(colors.gray.500);
     --tw-prose-hr: theme(colors.white / 0.1);
-    --tw-prose-code: theme(colors.brand-green);
+    --tw-prose-code: hsl(var(--primary));
   }
 }
 
@@ -63,7 +63,7 @@
 
   /* This is for styling ==highlighted text== in markdown */
   .prose-invert mark {
-    background-color: theme('colors.brand-green');
+    background-color: hsl(var(--primary));
     color: hsl(var(--background));
     padding: 2px 4px;
     border-radius: 4px;
