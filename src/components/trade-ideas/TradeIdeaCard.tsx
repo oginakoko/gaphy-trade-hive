@@ -1,3 +1,4 @@
+
 import { TradeIdea } from '@/types';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,9 +16,9 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
   
-  const snippet = idea.breakdown.length > 150 
-    ? idea.breakdown.substring(0, 150) + '...' 
-    : idea.breakdown;
+  const snippet = idea.breakdown.trim().length > 150 
+    ? idea.breakdown.trim().substring(0, 150) + '...' 
+    : idea.breakdown.trim();
 
   return (
     <div className="group glass-card rounded-xl overflow-hidden animate-fade-in-up h-full flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10">
