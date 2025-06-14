@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { TradeIdea } from '@/types';
+import ImageUploader from './ImageUploader';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -141,9 +142,12 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white">Chart/Image URL</FormLabel>
+              <FormLabel className="text-white">Chart/Image</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/chart.png" {...field} className="glass-input" />
+                <ImageUploader
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
