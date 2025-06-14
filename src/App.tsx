@@ -16,6 +16,9 @@ import TradeIdeaPage from "./pages/TradeIdeaPage";
 import ProfilePage from "./pages/Profile";
 import CreateAd from "./pages/CreateAd";
 import ManageAds from "./pages/admin/ManageAds";
+import DonationsLog from "./pages/admin/DonationsLog";
+import ManageAffiliateLinks from "./pages/admin/ManageAffiliateLinks";
+import ManageUsers from "./pages/admin/ManageUsers";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +39,9 @@ const App = () => (
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
                 <Route path="/admin/ads" element={<ManageAds />} />
+                <Route path="/admin/donations" element={<DonationsLog />} />
+                <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
+                <Route path="/admin/users" element={<ManageUsers />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/create-ad" element={<CreateAd />} />
               </Route>

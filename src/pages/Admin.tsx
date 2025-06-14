@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/layout/Header";
 import { Link } from "react-router-dom";
@@ -31,23 +32,38 @@ const AdminPage = () => {
             </Card>
           </Link>
 
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">Manage Affiliate Links</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-400">Add, edit, or remove affiliate links and resources.</p>
-            </CardContent>
-          </Card>
+          <Link to="/admin/affiliate-links">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">Manage Affiliate Links</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">Add, edit, or remove affiliate links and resources.</p>
+              </CardContent>
+            </Card>
+          </Link>
           
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">View Donations Log</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-400">See a log of all donations made.</p>
-            </CardContent>
-          </Card>
+          <Link to="/admin/donations">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">View Donations Log</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">See a log of all donations made.</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/admin/users">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">Manage Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">View users, grant admin rights, or ban users.</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </>
@@ -55,3 +71,4 @@ const AdminPage = () => {
 };
 
 export default AdminPage;
+
