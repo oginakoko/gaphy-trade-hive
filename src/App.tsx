@@ -21,6 +21,7 @@ import ManageAffiliateLinks from "./pages/admin/ManageAffiliateLinks";
 import ManageUsers from "./pages/admin/ManageUsers";
 import Analysis from "./pages/Analysis";
 import AuthGuard from "./components/auth/AuthGuard";
+import ManageApiKeys from "./pages/admin/ManageApiKeys";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                 <Route path="/admin/donations" element={<DonationsLog />} />
                 <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
                 <Route path="/admin/users" element={<ManageUsers />} />
+                <Route path="/admin/api-keys" element={<ManageApiKeys />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -65,3 +67,4 @@ const App = () => (
 );
 
 export default App;
+

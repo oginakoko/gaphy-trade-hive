@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/layout/Header";
 import { Link } from "react-router-dom";
@@ -64,6 +63,17 @@ const AdminPage = () => {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/admin/api-keys">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">Manage API Keys</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">Set keys for services like Google Gemini.</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </>
@@ -71,4 +81,3 @@ const AdminPage = () => {
 };
 
 export default AdminPage;
-

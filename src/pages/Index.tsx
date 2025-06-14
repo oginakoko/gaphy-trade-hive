@@ -42,31 +42,21 @@ const Index = () => {
       <Header />
       <main>
         <section className="animate-fade-in-up pt-16 md:pt-24">
-          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="text-center lg:text-left">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center">
               <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
                 Your AI-Powered<br/> Trading Co-Pilot
               </h1>
-              <p className="mt-6 max-w-xl mx-auto lg:mx-0 text-lg md:text-xl text-gray-300">
+              <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-300">
                 Ask AlphaFinder for instant analysis, get top trade ideas, and unlock market insights in seconds. The future of trading is here.
               </p>
-              <div className="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
+              <div className="mt-10 flex flex-wrap justify-center gap-4">
                 <Button asChild size="lg" className="bg-brand-green text-black font-bold hover:bg-brand-green/80 shadow-lg shadow-brand-green/30 transition-all duration-300 transform hover:scale-105">
                   <Link to="/analysis">Explore Analysis <ArrowRight className="ml-2" /></Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="border-white/20 text-white bg-white/5 hover:bg-white/10 hover:text-white backdrop-blur-sm">
                   <Link to="/auth">Get Started</Link>
                 </Button>
-              </div>
-            </div>
-            <div className="flex justify-center lg:justify-end">
-              {/* Placeholder to maintain hero section layout */}
-              <div className="w-full max-w-md h-96 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <div className="text-center text-gray-400">
-                  <Bot className="w-16 h-16 mx-auto mb-4" />
-                  <p>Your AI Assistant lives here.</p>
-                  <p className="text-sm">Click the chat bubble to talk!</p>
-                </div>
               </div>
             </div>
           </div>
