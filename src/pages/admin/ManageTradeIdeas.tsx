@@ -33,6 +33,7 @@ import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
 import { TradeIdea } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -110,11 +111,13 @@ const ManageTradeIdeasPage = () => {
                 </div>
 
                 <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
-                    <DialogContent className="glass-card border-brand-green/20">
+                    <DialogContent className="glass-card border-brand-green/20 sm:max-w-2xl">
                         <DialogHeader>
                             <DialogTitle className="text-white">{editingIdea ? 'Edit' : 'Create a New'} Trade Idea</DialogTitle>
                         </DialogHeader>
-                        <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />
+                        <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
+                            <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />
+                        </ScrollArea>
                     </DialogContent>
                 </Dialog>
                 
