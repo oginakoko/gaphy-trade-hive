@@ -1,5 +1,6 @@
 
 import { socialLinks } from '@/data/mockData';
+import { Link } from 'react-router-dom';
 
 const Header = () => {
   return (
@@ -9,18 +10,23 @@ const Header = () => {
           <img src="/logo.svg" alt="GaphyHive Logo" className="h-10 w-10" />
           <h1 className="text-2xl font-bold text-white tracking-wider">GaphyHive</h1>
         </div>
-        <div className="flex items-center gap-4">
-          {socialLinks.map((link) => (
-            <a
-              key={link.name}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-brand-green transition-colors"
-            >
-              <link.icon size={20} />
-            </a>
-          ))}
+        <div className="flex items-center gap-6">
+          <Link to="/admin" className="text-gray-300 hover:text-white font-medium transition-colors text-sm">
+            Admin
+          </Link>
+          <div className="flex items-center gap-4">
+            {socialLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-brand-green transition-colors"
+              >
+                <link.icon size={20} />
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </header>
