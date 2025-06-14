@@ -1,9 +1,9 @@
-
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { BarChart, Users, BookOpen, ArrowRight } from 'lucide-react';
 import TradeTicker from '@/components/landing/TradeTicker';
+import GaphyBot from '@/components/landing/GaphyBot';
 
 const FeatureCard = ({ icon, title, description, index }: { icon: React.ReactNode, title: string, description: string, index: number }) => (
   <div 
@@ -38,20 +38,27 @@ const Index = () => {
 
       <Header />
       <main>
-        <section className="text-center animate-fade-in-up pt-16 md:pt-24">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
-            Professional Grade<br/> Trading Analysis
-          </h1>
-          <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-300">
-            Dive into deep technical analysis, discover actionable trade ideas, and collaborate with a community of expert traders on GaphyHive.
-          </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Button asChild size="lg" className="bg-brand-green text-black font-bold hover:bg-brand-green/80 shadow-lg shadow-brand-green/30 transition-all duration-300 transform hover:scale-105">
-              <Link to="/analysis">Explore Analysis <ArrowRight className="ml-2" /></Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="border-white/20 text-white bg-white/5 hover:bg-white/10 hover:text-white backdrop-blur-sm">
-              <Link to="/auth">Get Started</Link>
-            </Button>
+        <section className="animate-fade-in-up pt-16 md:pt-24">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
+                Your AI-Powered<br/> Trading Co-Pilot
+              </h1>
+              <p className="mt-6 max-w-xl mx-auto lg:mx-0 text-lg md:text-xl text-gray-300">
+                Ask AlphaFinder for instant analysis, get top trade ideas, and unlock market insights in seconds. The future of trading is here.
+              </p>
+              <div className="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
+                <Button asChild size="lg" className="bg-brand-green text-black font-bold hover:bg-brand-green/80 shadow-lg shadow-brand-green/30 transition-all duration-300 transform hover:scale-105">
+                  <Link to="/analysis">Explore Analysis <ArrowRight className="ml-2" /></Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="border-white/20 text-white bg-white/5 hover:bg-white/10 hover:text-white backdrop-blur-sm">
+                  <Link to="/auth">Get Started</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-center lg:justify-end">
+              <GaphyBot />
+            </div>
           </div>
         </section>
 
