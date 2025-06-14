@@ -28,12 +28,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
 import { TradeIdea } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigate } from 'react-router-dom';
 
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -54,6 +55,7 @@ const ManageTradeIdeasPage = () => {
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingIdea, setEditingIdea] = useState<TradeIdea | null>(null);
     const [ideaToDelete, setIdeaToDelete] = useState<TradeIdea | null>(null);
+    const navigate = useNavigate();
 
     const { data: tradeIdeas, isLoading, error } = useQuery({
         queryKey: ['tradeIdeas'], 
@@ -103,7 +105,13 @@ const ManageTradeIdeasPage = () => {
             <Header />
             <div className="py-8 animate-fade-in-up container mx-auto px-4">
                 <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-4xl font-bold text-white">Manage Trade Ideas</h1>
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Back</span>
+                        </Button>
+                        <h1 className="text-4xl font-bold text-white">Manage Trade Ideas</h1>
+                    </div>
                     <Button onClick={handleNew} className="bg-brand-green text-black font-bold hover:bg-brand-green/80 flex items-center gap-2">
                         <PlusCircle size={20} />
                         New Trade Idea

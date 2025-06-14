@@ -14,7 +14,8 @@ import { Ad } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const fetchAds = async (): Promise<Ad[]> => {
     const { data, error } = await supabase
@@ -29,6 +30,7 @@ const fetchAds = async (): Promise<Ad[]> => {
 const ManageAdsPage = () => {
     const queryClient = useQueryClient();
     const { data: ads, isLoading, error } = useQuery({ queryKey: ['ads'], queryFn: fetchAds });
+    const navigate = useNavigate();
 
     const updateStatusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string, status: 'approved' | 'rejected' }) => {
@@ -52,7 +54,13 @@ const ManageAdsPage = () => {
         <>
             <Header />
             <div className="py-8 animate-fade-in-up container mx-auto px-4">
-                <h1 className="text-4xl font-bold text-white mb-8">Manage Ads</h1>
+                <div className="flex items-center gap-4 mb-8">
+                    <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <h1 className="text-4xl font-bold text-white">Manage Ads</h1>
+                </div>
                 <div className="glass-card p-0 overflow-hidden">
                     {isLoading && <p className="text-center text-gray-400 p-8">Loading ads...</p>}
                     {error && <p className="text-center text-red-500 p-8">Error: {(error as Error).message}</p>}
