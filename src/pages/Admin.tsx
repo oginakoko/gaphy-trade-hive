@@ -39,7 +39,7 @@ const AdminPage = () => {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-white">View Donations Log</CardTitle>
-            </Header>
+            </CardHeader>
             <CardContent>
               <p className="text-gray-400">See a log of all donations made.</p>
             </CardContent>
