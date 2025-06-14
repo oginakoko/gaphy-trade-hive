@@ -29,8 +29,8 @@ const ImageUploader = ({ value, onChange, bucketName }: ImageUploaderProps) => {
       setIsUploading(true);
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`; // Store in user-specific folder
 
       const { error: uploadError } = await supabase.storage.from(bucketName).upload(filePath, file);
 
@@ -49,12 +49,11 @@ const ImageUploader = ({ value, onChange, bucketName }: ImageUploaderProps) => {
   };
   
   const handleRemoveImage = async () => {
-    if (!value) return;
+    if (!value || !user) return;
     try {
-        const fileName = value.split('/').pop();
-        if(!fileName) throw new Error("File not found");
+        const pathToFile = value.substring(value.lastIndexOf(bucketName) + bucketName.length + 1);
         
-        const { error } = await supabase.storage.from(bucketName).remove([fileName]);
+        const { error } = await supabase.storage.from(bucketName).remove([pathToFile]);
         if (error) throw error;
         
         onChange(null);
