@@ -9,6 +9,9 @@ import Admin from "./pages/Admin";
 import ManageTradeIdeas from "./pages/admin/ManageTradeIdeas";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
+import { AuthProvider } from "./context/AuthContext";
+import Auth from "./pages/Auth";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -18,15 +21,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </MainLayout>
+        <AuthProvider>
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+
+              <Route element={<ProtectedRoute />}>
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
+              </Route>
+              
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </MainLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -31,11 +32,9 @@ interface TradeIdeaFormProps {
   setOpen: (open: boolean) => void;
 }
 
-// NOTE: This form currently doesn't associate posts with a user.
-// We'll need to add user authentication to link trade ideas to the admin user.
-
 const TradeIdeaForm = ({ setOpen }: TradeIdeaFormProps) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const form = useForm<TradeIdeaFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -49,13 +48,11 @@ const TradeIdeaForm = ({ setOpen }: TradeIdeaFormProps) => {
 
   const addTradeIdeaMutation = useMutation({
     mutationFn: async (newIdea: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
-      // In a real app, you would get the user id from the session.
-      // const { data: { user } } = await supabase.auth.getUser();
-      // if (!user) throw new Error("You must be logged in to post a trade idea.");
+      if (!user) throw new Error("You must be logged in to post a trade idea.");
       
       const { error } = await supabase.from('trade_ideas').insert([{
         ...newIdea,
-        // profile_id: user.id, // This should be uncommented once auth is set up
+        profile_id: user.id,
       }]);
 
       if (error) {
