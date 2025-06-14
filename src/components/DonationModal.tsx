@@ -52,13 +52,18 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
     }
   });
 
+  const handleClose = () => {
+    stkPushMutation.reset();
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="glass-card rounded-2xl w-full max-w-md border border-brand-green/20 shadow-2xl shadow-brand-green/10">
         <div className="p-6 relative">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+          <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
             <X size={24} />
           </button>
           <div className="text-center">
@@ -93,6 +98,15 @@ const DonationModal = ({ isOpen, onClose }: DonationModalProps) => {
                     {stkPushMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Donate with M-Pesa
                   </Button>
+                {stkPushMutation.isError && (
+                    <div className="mt-4 border-t border-brand-green/20 pt-4 text-center text-gray-300">
+                        <p className="text-sm">STK Push failed. You can donate manually using our Paybill:</p>
+                        <div className="mt-2 bg-brand-gray-100/50 p-3 rounded-lg inline-block text-left">
+                            <p>Paybill: <span className="font-bold text-brand-green">{mpesaDetails.paybill}</span></p>
+                            <p>Account No: <span className="font-bold text-brand-green">{mpesaDetails.account}</span></p>
+                        </div>
+                    </div>
+                )}
             </div>
           </div>
           
