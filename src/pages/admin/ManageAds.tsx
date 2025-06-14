@@ -34,7 +34,7 @@ const ManageAdsPage = () => {
     const navigate = useNavigate();
 
     const updateStatusMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: string, status: Ad['status'] }) => {
+        mutationFn: async ({ id, status }: { id: number, status: Ad['status'] }) => {
             // Call the edge function instead of updating the DB directly
             const { data, error } = await supabase.functions.invoke('update-ad-status', {
                 body: { adId: id, status },
@@ -68,7 +68,7 @@ const ManageAdsPage = () => {
         }
     });
 
-    const handleUpdateStatus = (id: string, status: Ad['status']) => {
+    const handleUpdateStatus = (id: number, status: Ad['status']) => {
         updateStatusMutation.mutate({ id, status });
     };
 

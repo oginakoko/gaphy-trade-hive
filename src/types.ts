@@ -1,3 +1,5 @@
+import { Twitter, Instagram, Link, BarChart, BookOpen, ShoppingCart } from 'lucide-react';
+
 export type TradeIdea = {
   id: string;
   created_at: string;
@@ -34,7 +36,7 @@ export type Profile = {
 };
 
 export type Ad = {
-  id: string;
+  id: number;
   created_at: string;
   user_id: string;
   title: string;
