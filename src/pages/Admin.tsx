@@ -1,6 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/layout/Header";
+import { Link } from "react-router-dom";
 
 const AdminPage = () => {
   return (
@@ -9,14 +9,16 @@ const AdminPage = () => {
       <div className="py-8 animate-fade-in-up">
         <h1 className="text-4xl font-bold text-white mb-8">Admin Panel</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">Manage Trade Ideas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-400">Post new trade ideas and manage existing ones.</p>
-            </CardContent>
-          </Card>
+          <Link to="/admin/trade-ideas">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">Manage Trade Ideas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">Post new trade ideas and manage existing ones.</p>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card className="glass-card">
             <CardHeader>
