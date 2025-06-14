@@ -26,3 +26,10 @@ export type Comment = {
     avatar_url: string | null;
   } | null;
 };
+
+export type Profile = {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  updated_at: string;
+};

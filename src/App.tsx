@@ -13,6 +13,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import TradeIdeaPage from "./pages/TradeIdeaPage";
+import ProfilePage from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route element={<ProtectedRoute />}>
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
