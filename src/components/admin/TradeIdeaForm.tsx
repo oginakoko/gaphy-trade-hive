@@ -51,7 +51,9 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
 
   const mutation = useMutation({
     mutationFn: async (ideaData: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
-      if (!user) throw new Error("You must be logged in to perform this action.");
+      if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
+        throw new Error("You are not authorized to perform this action.");
+      }
 
       const dataToUpsert = {
         ...ideaData,

@@ -32,6 +32,7 @@ import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
 import { TradeIdea } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -48,6 +49,7 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
 
 const ManageTradeIdeasPage = () => {
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingIdea, setEditingIdea] = useState<TradeIdea | null>(null);
     const [ideaToDelete, setIdeaToDelete] = useState<TradeIdea | null>(null);
@@ -59,6 +61,9 @@ const ManageTradeIdeasPage = () => {
 
     const deleteMutation = useMutation({
         mutationFn: async (ideaId: string) => {
+            if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
+                throw new Error("You are not authorized to perform this action.");
+            }
             const { error } = await supabase.from('trade_ideas').delete().eq('id', ideaId);
             if (error) {
                 throw new Error(error.message);
