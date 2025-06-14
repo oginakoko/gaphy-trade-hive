@@ -3,22 +3,57 @@ import React, { useState } from 'react';
 import Header from '@/components/layout/Header';
 import AffiliateLinks from '@/components/AffiliateLinks';
 import TradeIdeaCard from '@/components/trade-ideas/TradeIdeaCard';
-import { tradeIdeas } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import DonationModal from '@/components/DonationModal';
 import { Gem } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
+import { TradeIdea } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
+    const { data, error } = await supabase
+        .from('trade_ideas')
+        .select('*, profiles(username, avatar_url)')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+    // The select query with join returns the nested profile data in a `profiles` property
+    // which might be an object or null. We'll cast it to the expected type.
+    return data as TradeIdea[];
+};
+
 
 const Index = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
+  const { data: tradeIdeas, isLoading, error } = useQuery({
+    queryKey: ['tradeIdeas'], 
+    queryFn: fetchTradeIdeas
+  });
 
   return (
     <>
       <Header />
       <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-8">
         <div className="lg:col-span-2 space-y-8">
-          {tradeIdeas.map((idea) => (
+          {isLoading && (
+            <>
+              <Skeleton className="h-[358px] w-full rounded-xl glass-card" />
+              <Skeleton className="h-[358px] w-full rounded-xl glass-card" />
+            </>
+          )}
+          {error && <p className="text-center text-red-500 p-8 glass-card">Error loading trade ideas: {(error as Error).message}</p>}
+          {tradeIdeas?.map((idea) => (
             <TradeIdeaCard key={idea.id} idea={idea} />
           ))}
+          {tradeIdeas?.length === 0 && !isLoading && !error && (
+            <div className="glass-card rounded-xl p-8 text-center">
+              <h3 className="text-xl font-bold text-white mb-2">No Trade Ideas Yet</h3>
+              <p className="text-gray-400">Be the first to see a new idea. Check back soon!</p>
+            </div>
+          )}
         </div>
         <aside className="space-y-8">
           <AffiliateLinks />

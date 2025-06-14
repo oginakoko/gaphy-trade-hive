@@ -1,22 +1,23 @@
 
-import { tradeIdeas } from '@/data/mockData';
-import { MessageCircle, Heart, Repeat } from 'lucide-react';
-
-type TradeIdea = (typeof tradeIdeas)[0];
+import { TradeIdea } from '@/types';
+import { MessageCircle, Heart } from 'lucide-react';
 
 interface TradeIdeaCardProps {
   idea: TradeIdea;
 }
 
 const TradeIdeaCard = ({ idea }: TradeIdeaCardProps) => {
+  const authorName = idea.profiles?.username || 'Anonymous';
+  const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
+
   return (
     <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
-      <img src={idea.image} alt={idea.title} className="w-full h-48 object-cover" />
+      {idea.image_url && <img src={idea.image_url} alt={idea.title} className="w-full h-48 object-cover" />}
       <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <img src={idea.authorAvatar} alt={idea.author} className="h-10 w-10 rounded-full bg-brand-gray-200" />
+          <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
           <div>
-            <p className="font-bold text-white">{idea.author}</p>
+            <p className="font-bold text-white">{authorName}</p>
             <p className="text-sm text-brand-green">{idea.instrument}</p>
           </div>
         </div>
@@ -26,15 +27,13 @@ const TradeIdeaCard = ({ idea }: TradeIdeaCardProps) => {
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-2 hover:text-red-500 transition-colors">
               <Heart size={18} />
-              <span>{idea.likes}</span>
             </button>
             <button className="flex items-center gap-2 hover:text-brand-green transition-colors">
               <MessageCircle size={18} />
-              <span>{idea.comments}</span>
             </button>
           </div>
-          <div className="flex gap-2">
-            {idea.tags.map(tag => (
+          <div className="flex gap-2 flex-wrap">
+            {idea.tags?.map(tag => (
               <span key={tag} className="bg-brand-gray-200 text-gray-300 text-xs font-medium px-2 py-1 rounded-full">
                 {tag}
               </span>
@@ -47,4 +46,3 @@ const TradeIdeaCard = ({ idea }: TradeIdeaCardProps) => {
 };
 
 export default TradeIdeaCard;
-
