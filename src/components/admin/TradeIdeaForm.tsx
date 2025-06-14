@@ -1,3 +1,4 @@
+
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -54,6 +55,29 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
     mutationFn: async (ideaData: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
       if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
         throw new Error("You are not authorized to perform this action.");
+      }
+
+      // Ensure a profile exists for the user to satisfy the foreign key constraint.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        throw new Error(`Failed to check for profile: ${profileError.message}`);
+      }
+      
+      if (!profile) {
+        // No profile found, let's create one.
+        const newUsername = user.email?.split('@')[0] || `user_${user.id.substring(0, 4)}`;
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({ id: user.id, username: newUsername });
+        
+        if (createProfileError) {
+          throw new Error(`Failed to create user profile: ${createProfileError.message}`);
+        }
       }
 
       const dataToUpsert = {
