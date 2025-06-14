@@ -1,6 +1,8 @@
 
 import { TradeIdea } from '@/types';
 import { MessageCircle, Heart } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface TradeIdeaCardProps {
   idea: TradeIdea;
@@ -21,8 +23,10 @@ const TradeIdeaCard = ({ idea }: TradeIdeaCardProps) => {
             <p className="text-sm text-brand-green">{idea.instrument}</p>
           </div>
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">{idea.title}</h3>
-        <p className="text-gray-300 text-sm mb-4">{idea.breakdown}</p>
+        <h3 className="text-xl font-bold text-brand-green mb-2">{idea.title}</h3>
+        <div className="prose prose-sm prose-invert mb-4 max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{idea.breakdown}</ReactMarkdown>
+        </div>
         <div className="flex items-center justify-between text-gray-400">
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-2 hover:text-red-500 transition-colors">

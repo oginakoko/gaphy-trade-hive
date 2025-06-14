@@ -35,6 +35,12 @@
 
     --radius: 0.5rem;
   }
+  
+  .prose-invert {
+    --tw-prose-headings: theme(colors.brand-green);
+    --tw-prose-links: theme(colors.brand-green);
+    --tw-prose-bold: theme(colors.white);
+  }
 }
 
 @layer base {
