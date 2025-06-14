@@ -95,7 +95,7 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
           <div>
             <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa (STK Push)</h3>
             <div className="bg-brand-gray-200/50 p-4 rounded-lg space-y-3">
-                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">${ad.cost?.toFixed(2)}</span> to Till <span className="font-bold text-white">{mpesaDetails.till}</span></p>
+                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">${ad.cost?.toFixed(2)}</span> to Paybill <span className="font-bold text-white">{mpesaDetails.paybill}</span></p>
                 <Input 
                     type="tel"
                     placeholder="254xxxxxxxxx"
