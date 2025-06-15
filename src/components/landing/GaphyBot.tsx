@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -27,6 +26,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   const { user } = useAuth();
   const scrollViewport = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -56,16 +56,43 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
     if (!input.trim()) return;
 
     const userMessage: Message = { sender: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+
+    setMessages(newMessages);
     setInput('');
     setIsBotThinking(true);
 
-    // TODO: Replace with actual Google Gemini API call via a secure Supabase Edge Function.
-    setTimeout(() => {
-        const botResponse: Message = { sender: 'bot', text: "I'm currently in development. Soon you'll be able to ask me for live trade analysis! For now, explore the amazing trade ideas on our platform." };
-        setMessages(prev => [...prev, botResponse]);
-        setIsBotThinking(false);
-    }, 1500);
+    try {
+      // Filter out image messages, as gemini-pro can't handle them
+      const textMessages = newMessages.filter(m => m.text).map(m => ({ sender: m.sender, text: m.text }));
+
+      const { data, error } = await supabase.functions.invoke('chat-with-ai', {
+        body: { messages: textMessages },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      const botResponse: Message = { sender: 'bot', text: data.reply };
+      setMessages(prev => [...prev, botResponse]);
+
+    } catch (error: any) {
+      console.error("Error calling chat-with-ai function:", error);
+      const errorMessage = error.message.includes("not configured") 
+        ? "The AI assistant is not configured. Please ask an admin to set the API key."
+        : "Sorry, I'm having a little trouble right now. Please try again later.";
+      
+      const botResponse: Message = { sender: 'bot', text: errorMessage };
+      setMessages(prev => [...prev, botResponse]);
+      toast({ title: 'Chatbot Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsBotThinking(false);
+    }
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
