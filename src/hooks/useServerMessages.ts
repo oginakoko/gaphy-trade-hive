@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,15 +21,44 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
+  mentioned_users?: string[];
 }) => {
+  const { mentioned_users, ...messageToInsert } = messageData;
+  console.log('Attempting to send message:', messageToInsert);
   const { data, error } = await supabase
     .from('server_messages')
-    .insert(messageData)
+    .insert(messageToInsert)
     .select('*, profiles(username, avatar_url)')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error sending message:', error);
+    throw new Error(error.message);
+  }
   
+  console.log('Message sent successfully:', data);
+
+  if (data && mentioned_users && mentioned_users.length > 0) {
+    console.log('Creating notifications for mentioned users:', mentioned_users);
+    const notifications = mentioned_users.map(mentionedId => ({
+      recipient_id: mentionedId,
+      sender_id: messageData.user_id,
+      type: 'mention' as const,
+      reference_id: data.id,
+      server_id: messageData.server_id,
+    }));
+
+    const { error: notificationError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+    
+    if (notificationError) {
+      console.error('Failed to create notifications:', notificationError);
+    } else {
+      console.log('Notifications created successfully.');
+    }
+  }
+
   return data;
 };
 
