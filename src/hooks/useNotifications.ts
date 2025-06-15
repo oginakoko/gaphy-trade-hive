@@ -1,9 +1,11 @@
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { Server } from '@/types/server';
 import { Profile } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
 export interface Notification {
     id: string;
@@ -38,8 +40,42 @@ export const useNotifications = () => {
         queryKey: ['notifications', user?.id],
         queryFn: () => fetchNotifications(user!.id),
         enabled: !!user,
-        refetchInterval: 60000, // Refetch every minute
     });
+
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel(`notifications:${user.id}`)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
+                async (payload) => {
+                    queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+                    
+                    const newNotification = payload.new as { sender_id: string, server_id: string };
+                    try {
+                        const { data: sender } = await supabase.from('profiles').select('username').eq('id', newNotification.sender_id).single();
+                        const { data: server } = await supabase.from('servers').select('name').eq('id', newNotification.server_id).single();
+
+                        toast({
+                            title: `New Mention in #${server?.name || 'server'}`,
+                            description: `${sender?.username || 'Someone'} mentioned you.`,
+                        });
+                    } catch (error) {
+                         toast({
+                            title: "New Notification",
+                            description: "You have a new mention.",
+                        });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, queryClient]);
 
     const markAsReadMutation = useMutation({
         mutationFn: async (notificationIds: string[]) => {
