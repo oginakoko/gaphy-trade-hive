@@ -11,9 +11,10 @@ interface ServerChatHeaderProps {
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onManageMembers: () => void;
 }
 
-const ServerChatHeader = ({ server, onBack, onEdit, onDelete }: ServerChatHeaderProps) => {
+const ServerChatHeader = ({ server, onBack, onEdit, onDelete, onManageMembers }: ServerChatHeaderProps) => {
   const { user } = useAuth();
   const isOwner = user?.id === server.owner_id;
 
@@ -32,7 +33,7 @@ const ServerChatHeader = ({ server, onBack, onEdit, onDelete }: ServerChatHeader
         <h3 className="text-white font-semibold">{server.name}</h3>
         <p className="text-gray-400 text-sm">{server.member_count || 0} members</p>
       </div>
-      {isOwner && <ServerSettings onEdit={onEdit} onDelete={onDelete} />}
+      {isOwner && <ServerSettings onEdit={onEdit} onDelete={onDelete} onManageMembers={onManageMembers} />}
     </div>
   );
 };

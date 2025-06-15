@@ -10,6 +10,7 @@ import ServerMessageList from './ServerMessageList';
 import ServerMessageInput from './ServerMessageInput';
 import EditServerDialog from './EditServerDialog';
 import DeleteServerDialog from './DeleteServerDialog';
+import ManageMembersDialog from './ManageMembersDialog';
 import { useServers } from '@/hooks/useServers';
 
 interface ServerChatProps {
@@ -19,7 +20,7 @@ interface ServerChatProps {
 
 const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const { user } = useAuth();
-  const { messages, sendMessage, isSending } = useServerMessages(initialServer.id);
+  const { messages, sendMessage, isSending, deleteMessage } = useServerMessages(initialServer.id);
   const { userServers } = useServers();
   
   // Keep local state for the server to reflect updates without a full page reload
@@ -34,6 +35,7 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
 
   const handleSendMessage = async (message: string, mediaFile: File | null) => {
     if (!message && !mediaFile) return;
@@ -78,7 +80,25 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       media_type: mediaType,
     });
   };
-  
+
+  const handleDeleteMessage = (messageId: string) => {
+    deleteMessage(messageId, {
+      onSuccess: () => {
+        toast({
+          title: 'Message Deleted',
+          description: 'Your message has been deleted.',
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to delete message.',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       <ServerChatHeader
@@ -86,9 +106,10 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         onBack={onBack}
         onEdit={() => setIsEditOpen(true)}
         onDelete={() => setIsDeleteOpen(true)}
+        onManageMembers={() => setIsManageMembersOpen(true)}
       />
 
-      <ServerMessageList messages={messages} />
+      <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} />
 
       <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} />
 
@@ -104,6 +125,12 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onSuccess={onBack}
+      />
+
+      <ManageMembersDialog
+        server={server}
+        isOpen={isManageMembersOpen}
+        onClose={() => setIsManageMembersOpen(false)}
       />
     </div>
   );

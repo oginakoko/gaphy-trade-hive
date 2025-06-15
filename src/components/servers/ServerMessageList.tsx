@@ -6,9 +6,10 @@ import ServerMessageItem from './ServerMessageItem';
 
 interface ServerMessageListProps {
   messages: ServerMessage[];
+  onDeleteMessage: (messageId: string) => void;
 }
 
-const ServerMessageList = ({ messages }: ServerMessageListProps) => {
+const ServerMessageList = ({ messages, onDeleteMessage }: ServerMessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -24,7 +25,7 @@ const ServerMessageList = ({ messages }: ServerMessageListProps) => {
     <ScrollArea className="flex-1 p-4">
       <div className="space-y-4">
         {messages.map((msg) => (
-          <ServerMessageItem key={msg.id} msg={msg} />
+          <ServerMessageItem key={msg.id} msg={msg} onDelete={onDeleteMessage} />
         ))}
         <div ref={messagesEndRef} />
       </div>

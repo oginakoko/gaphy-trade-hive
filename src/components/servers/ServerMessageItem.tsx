@@ -3,15 +3,20 @@ import { ServerMessage } from '@/types/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { Card } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { FileText, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ServerMessageItemProps {
   msg: ServerMessage;
+  onDelete: (messageId: string) => void;
 }
 
-const ServerMessageItem = ({ msg }: ServerMessageItemProps) => {
+const ServerMessageItem = ({ msg, onDelete }: ServerMessageItemProps) => {
+  const { user } = useAuth();
+  const isAuthor = user?.id === msg.user_id;
+
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 group relative pr-8">
       <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
         <AvatarImage src={msg.profiles?.avatar_url || undefined} />
         <AvatarFallback className="bg-gray-600 text-white text-sm">
@@ -58,6 +63,15 @@ const ServerMessageItem = ({ msg }: ServerMessageItemProps) => {
           </div>
         )}
       </div>
+      {isAuthor && (
+        <button
+          onClick={() => onDelete(msg.id)}
+          className="absolute top-1 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+          aria-label="Delete message"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   );
 };

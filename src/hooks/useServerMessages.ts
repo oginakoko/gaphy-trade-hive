@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +31,15 @@ const sendMessage = async (messageData: {
   return data;
 };
 
+const deleteMessage = async (messageId: string) => {
+  const { error } = await supabase
+    .from('server_messages')
+    .delete()
+    .eq('id', messageId);
+
+  if (error) throw new Error(error.message);
+};
+
 export const useServerMessages = (serverId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -52,10 +60,19 @@ export const useServerMessages = (serverId: string) => {
     },
   });
 
+  const deleteMessageMutation = useMutation({
+    mutationFn: deleteMessage,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['serverMessages', serverId] });
+    },
+  });
+
   return {
     messages: messages || [],
     isLoading,
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
+    deleteMessage: deleteMessageMutation.mutate,
+    isDeleting: deleteMessageMutation.isPending,
   };
 };

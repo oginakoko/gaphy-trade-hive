@@ -6,25 +6,41 @@ import { Server, ServerMember } from '@/types/server';
 const fetchPublicServers = async (): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('servers')
-    .select('*, profiles!owner_id(username, avatar_url)')
+    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return data as Server[];
+  
+  const servers = data?.map(s => {
+      const { server_members, ...rest } = s as any;
+      return {
+          ...rest,
+          member_count: Array.isArray(server_members) && server_members.length > 0 ? server_members[0].count : 0
+      };
+  }) || [];
+
+  return servers as Server[];
 };
 
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('server_members')
-    .select('servers(*, profiles!owner_id(username, avatar_url))')
+    .select('servers(*, profiles!owner_id(username, avatar_url), server_members(count))')
     .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
   if (!data) return [];
 
-  // Supabase can return an array for the `servers` relation, so we flatMap it.
-  const servers = data.flatMap(item => item.servers || []).filter(Boolean);
+  const servers = data.map(item => {
+    if (!item.servers) return null;
+    const { server_members, ...rest } = item.servers as any;
+    return {
+      ...rest,
+      member_count: Array.isArray(server_members) && server_members.length > 0 ? server_members[0].count : 0
+    };
+  }).filter(Boolean);
+
   return servers as Server[];
 };
 
@@ -123,6 +139,7 @@ export const useServers = () => {
       joinServer(serverId, user!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userServers'] });
+      queryClient.invalidateQueries({ queryKey: ['publicServers'] });
     },
   });
 
