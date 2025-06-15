@@ -30,7 +30,7 @@ const ServerRecommendations = () => {
   const discoverablePublicServers = publicServers.filter(s => !userServerIds.has(s.id)).slice(0, 3);
 
   return (
-    <div className="glass-card p-4 rounded-xl sticky top-24">
+    <div className="glass-card p-4 rounded-xl">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-white">Discover Servers</h3>
         <Link to="/servers" className="text-sm text-brand-green hover:underline">View All</Link>
