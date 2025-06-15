@@ -6,40 +6,25 @@ import { Server, ServerMember } from '@/types/server';
 const fetchPublicServers = async (): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('servers')
-    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
+    .select('*, profiles!owner_id(username, avatar_url)')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
   
-  const servers = data?.map(s => {
-      const { server_members, ...rest } = s as any;
-      return {
-          ...rest,
-          member_count: Array.isArray(server_members) && server_members.length > 0 ? server_members[0].count : 0
-      };
-  }) || [];
-
-  return servers as Server[];
+  return data as Server[];
 };
 
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('server_members')
-    .select('servers(*, profiles!owner_id(username, avatar_url), server_members(count))')
+    .select('servers!inner(*, profiles!owner_id(username, avatar_url))')
     .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
   if (!data) return [];
 
-  const servers = data.map(item => {
-    if (!item.servers) return null;
-    const { server_members, ...rest } = item.servers as any;
-    return {
-      ...rest,
-      member_count: Array.isArray(server_members) && server_members.length > 0 ? server_members[0].count : 0
-    };
-  }).filter(Boolean);
+  const servers = data.map(item => item.servers).filter(Boolean);
 
   return servers as Server[];
 };

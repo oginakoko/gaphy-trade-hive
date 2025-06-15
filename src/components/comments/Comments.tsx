@@ -46,7 +46,7 @@ const Comments = ({ tradeIdeaId }: CommentsProps) => {
           {comments && comments.length > 0 && (
             <div>
               {comments.map((comment) => (
-                <CommentCard key={comment.id} comment={comment} />
+                <CommentCard key={comment.id} comment={comment} tradeIdeaId={tradeIdeaId} />
               ))}
             </div>
           )}
