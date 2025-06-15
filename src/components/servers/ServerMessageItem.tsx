@@ -3,7 +3,7 @@ import { ServerMessage } from '@/types/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { Card } from '@/components/ui/card';
-import { FileText, Trash2, Edit } from 'lucide-react';
+import { FileText, Trash2, Edit, MessageSquareReply } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,9 +15,10 @@ interface ServerMessageItemProps {
   msg: ServerMessage;
   onDelete: (messageId: string) => void;
   serverOwnerId: string;
+  onReply: (message: ServerMessage) => void;
 }
 
-const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemProps) => {
+const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply }: ServerMessageItemProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -71,8 +72,19 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemPr
     });
 };
 
+  const handleQuotedClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const targetId = msg.parent_message?.id;
+    if (targetId) {
+        const element = document.getElementById(`message-${targetId}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element?.classList.add('highlight-message');
+        setTimeout(() => element?.classList.remove('highlight-message'), 1500);
+    }
+  };
+
   return (
-    <div className="flex gap-3 group relative pr-12">
+    <div className="flex gap-3 group relative pr-16" id={`message-${msg.id}`}>
       <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
         <AvatarImage src={msg.profiles?.avatar_url || undefined} />
         <AvatarFallback className="bg-gray-600 text-white text-sm">
@@ -88,6 +100,21 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemPr
             {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
           </span>
         </div>
+        
+        {msg.parent_message && (
+          <a href={`#message-${msg.parent_message.id}`} onClick={handleQuotedClick} className="block cursor-pointer">
+            <div className="relative pl-3 before:absolute before:left-0 before:top-1 before:h-[calc(100%-0.5rem)] before:w-1 before:bg-gray-600 before:rounded-full mb-1 opacity-60 hover:opacity-100 transition-opacity">
+                <p className="text-xs text-gray-300 font-medium flex items-center gap-1">
+                    <MessageSquareReply size={12} />
+                    {msg.parent_message.profiles?.username || 'Anonymous'}
+                </p>
+                <p className="text-xs text-gray-400 truncate ml-2">
+                    {msg.parent_message.content || '...'}
+                </p>
+            </div>
+        </a>
+        )}
+
         {isEditing ? (
            <div className="space-y-2 mt-2">
             <Textarea 
@@ -138,10 +165,17 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemPr
           </>
         )}
       </div>
-      {!isEditing && (canEdit || canDelete) && (
+      {!isEditing && (
         <div
           className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-gray-800/50 rounded-md"
         >
+          <button
+              onClick={() => onReply(msg)}
+              className="p-1 text-gray-400 hover:text-white"
+              aria-label="Reply to message"
+            >
+              <MessageSquareReply size={14} />
+            </button>
           {canEdit && (
             <button
               onClick={() => {

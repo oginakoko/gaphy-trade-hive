@@ -8,9 +8,10 @@ interface ServerMessageListProps {
   messages: ServerMessage[];
   onDeleteMessage: (messageId: string) => void;
   serverOwnerId: string;
+  onReply: (message: ServerMessage) => void;
 }
 
-const ServerMessageList = ({ messages, onDeleteMessage, serverOwnerId }: ServerMessageListProps) => {
+const ServerMessageList = ({ messages, onDeleteMessage, serverOwnerId, onReply }: ServerMessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -26,7 +27,7 @@ const ServerMessageList = ({ messages, onDeleteMessage, serverOwnerId }: ServerM
     <ScrollArea className="flex-1 p-4">
       <div className="space-y-4">
         {messages.map((msg) => (
-          <ServerMessageItem key={msg.id} msg={msg} onDelete={onDeleteMessage} serverOwnerId={serverOwnerId} />
+          <ServerMessageItem key={msg.id} msg={msg} onDelete={onDeleteMessage} serverOwnerId={serverOwnerId} onReply={onReply} />
         ))}
         <div ref={messagesEndRef} />
       </div>

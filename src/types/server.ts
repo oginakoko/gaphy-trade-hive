@@ -38,4 +38,12 @@ export interface ServerMessage {
     username: string | null;
     avatar_url: string | null;
   } | null;
+  parent_message_id?: string | null;
+  parent_message?: {
+    id: string;
+    content: string | null;
+    profiles: {
+      username: string | null;
+    } | null;
+  } | null;
 }

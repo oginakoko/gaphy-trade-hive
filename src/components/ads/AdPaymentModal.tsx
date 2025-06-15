@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -60,6 +59,7 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
         navigate('/');
     },
     onError: (error: any) => {
+        console.error("Crypto payment confirmation error:", error); // Added for more detailed logging
         toast({ title: "Error", description: error.message || "Could not confirm payment.", variant: "destructive" });
     }
   });

@@ -7,7 +7,7 @@ import { ServerMessage } from '@/types/server';
 const fetchServerMessages = async (serverId: string): Promise<ServerMessage[]> => {
   const { data, error } = await supabase
     .from('server_messages')
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles(username, avatar_url), parent_message:server_messages!parent_message_id(id, content, profiles(username))')
     .eq('server_id', serverId)
     .order('created_at', { ascending: true });
 
@@ -21,11 +21,12 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
+  parent_message_id?: string | null;
 }) => {
   const { data, error } = await supabase
     .from('server_messages')
     .insert(messageData)
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles(username, avatar_url), parent_message:server_messages!parent_message_id(id, content, profiles(username))')
     .single();
 
   if (error) {
