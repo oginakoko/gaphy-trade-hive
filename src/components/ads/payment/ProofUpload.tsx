@@ -29,17 +29,25 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
             if (!user) throw new Error("User not authenticated.");
             if (!paymentProofUrl) throw new Error("Please upload payment proof.");
 
-            // First check if the columns exist, if not, just update status
+            console.log('Submitting payment proof:', { adId: ad.id, paymentProofUrl, paymentMethod });
+
             const { data, error } = await supabase
                 .from('ads')
                 .update({
-                    status: 'pending_approval'
+                    status: 'pending_approval',
+                    payment_proof_url: paymentProofUrl,
+                    payment_method: paymentMethod
                 })
                 .eq('id', ad.id)
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Database update error:', error);
+                throw error;
+            }
+            
+            console.log('Payment proof submitted successfully:', data);
             return data;
         },
         onSuccess: () => {
