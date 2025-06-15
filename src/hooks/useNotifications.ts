@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,12 +12,12 @@ export interface Notification {
     created_at: string;
     recipient_id: string;
     sender_id: string;
-    type: 'mention' | 'new_analysis' | 'new_comment' | 'new_like' | 'new_server' | string;
+    type: 'mention' | 'new_analysis' | 'new_comment' | 'new_like' | 'new_server' | 'recommendation' | string;
     reference_id: string;
     server_id: string | null;
     is_read: boolean;
     sender: Pick<Profile, 'username' | 'avatar_url'>;
-    server: Pick<Server, 'name'> | null;
+    server: Pick<Server, 'id' | 'name'> | null;
 }
 
 export const useNotifications = () => {
@@ -26,7 +27,7 @@ export const useNotifications = () => {
     const fetchNotifications = async (userId: string) => {
         const { data, error } = await supabase
             .from('notifications')
-            .select('*, sender:profiles!sender_id(username, avatar_url), server:servers(name)')
+            .select('*, sender:profiles!sender_id(username, avatar_url), server:servers(id, name)')
             .eq('recipient_id', userId)
             .order('created_at', { ascending: false })
             .limit(20);
@@ -84,6 +85,12 @@ export const useNotifications = () => {
                                 title: 'New Server to Discover',
                                 description: `Check out the new server: ${server?.name || 'New Server'}.`,
                             });
+                        } else if (newNotification.type === 'recommendation' && newNotification.server_id) {
+                            const { data: server } = await supabase.from('servers').select('name').eq('id', newNotification.server_id).single();
+                           toast({
+                               title: 'Server Recommendation',
+                               description: `We found a server you might like: ${server?.name || 'New Server'}.`,
+                           });
                         }
                     } catch (error) {
                          toast({

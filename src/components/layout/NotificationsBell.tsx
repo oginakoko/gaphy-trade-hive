@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,11 @@ const getNotificationContent = (notification: Notification) => {
         case 'new_server':
             return {
                 text: <>Discover the new server: {serverName}.</>,
+                path: `/servers?server_id=${server?.id}`
+            };
+        case 'recommendation':
+            return {
+                text: <>We found a server you might like: {serverName}.</>,
                 path: `/servers?server_id=${server?.id}`
             };
         default:
