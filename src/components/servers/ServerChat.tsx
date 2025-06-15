@@ -5,10 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Send, ArrowLeft, Paperclip, Image, FileText } from 'lucide-react';
+import { Send, ArrowLeft, Paperclip, FileText } from 'lucide-react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server } from '@/types/server';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from '../ui/use-toast';
 
 interface ServerChatProps {
   server: Server;
@@ -21,6 +24,7 @@ const ServerChat = ({ server, onBack }: ServerChatProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const { user } = useAuth();
   const { messages, sendMessage, isSending } = useServerMessages(server.id);
 
   useEffect(() => {
@@ -37,13 +41,36 @@ const ServerChat = ({ server, onBack }: ServerChatProps) => {
     let mediaUrl: string | undefined;
     let mediaType: 'image' | 'video' | 'audio' | 'document' | undefined;
 
-    if (mediaFile) {
-      // Here you would upload the file to Supabase storage
-      // For now, we'll just use a placeholder
-      mediaUrl = URL.createObjectURL(mediaFile);
-      mediaType = mediaFile.type.startsWith('image/') ? 'image' : 
-                  mediaFile.type.startsWith('video/') ? 'video' :
-                  mediaFile.type.startsWith('audio/') ? 'audio' : 'document';
+    if (mediaFile && user) {
+      try {
+        const fileExt = mediaFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${server.id}/${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('server-media')
+          .upload(filePath, mediaFile);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('server-media')
+          .getPublicUrl(uploadData.path);
+
+        mediaUrl = urlData.publicUrl;
+        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 
+                    mediaFile.type.startsWith('video/') ? 'video' :
+                    mediaFile.type.startsWith('audio/') ? 'audio' : 'document';
+      } catch (error: any) {
+        toast({
+          title: "Upload Failed",
+          description: error.message || "Could not upload the file.",
+          variant: "destructive",
+        })
+        return;
+      }
     }
 
     sendMessage({
@@ -109,14 +136,14 @@ const ServerChat = ({ server, onBack }: ServerChatProps) => {
                   </span>
                 </div>
                 {msg.content && (
-                  <p className="text-gray-300 text-sm">{msg.content}</p>
+                  <p className="text-gray-300 text-sm whitespace-pre-wrap">{msg.content}</p>
                 )}
                 {msg.media_url && (
                   <div className="mt-2">
                     {msg.media_type === 'image' && (
                       <img 
                         src={msg.media_url} 
-                        alt="Shared image" 
+                        alt="Shared content" 
                         className="max-w-xs rounded-lg"
                       />
                     )}

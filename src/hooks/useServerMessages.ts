@@ -17,6 +17,7 @@ const fetchServerMessages = async (serverId: string): Promise<ServerMessage[]> =
 
 const sendMessage = async (messageData: {
   server_id: string;
+  user_id: string;
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
@@ -42,7 +43,10 @@ export const useServerMessages = (serverId: string) => {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: sendMessage,
+    mutationFn: (newMessage: Omit<Parameters<typeof sendMessage>[0], 'user_id'>) => {
+      if (!user) throw new Error("User not authenticated");
+      return sendMessage({ ...newMessage, user_id: user.id });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['serverMessages', serverId] });
     },
