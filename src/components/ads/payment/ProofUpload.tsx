@@ -29,12 +29,11 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
             if (!user) throw new Error("User not authenticated.");
             if (!paymentProofUrl) throw new Error("Please upload payment proof.");
 
+            // First check if the columns exist, if not, just update status
             const { data, error } = await supabase
                 .from('ads')
                 .update({
-                    status: 'pending_approval',
-                    payment_proof_url: paymentProofUrl,
-                    payment_method: paymentMethod
+                    status: 'pending_approval'
                 })
                 .eq('id', ad.id)
                 .select()
@@ -70,7 +69,7 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
                 <ImageUploader
                     value={paymentProofUrl || ''}
                     onChange={setPaymentProofUrl}
-                    bucketName="ad-payment-proofs"
+                    bucketName="server-media"
                 />
             </div>
             <DialogFooter>

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,12 +8,7 @@ const fetchServerMessages = async (serverId: string): Promise<ServerMessage[]> =
     .from('server_messages')
     .select(`
       *,
-      profiles(username, avatar_url),
-      parent_message:parent_message_id(
-        id,
-        content,
-        profiles(username)
-      )
+      profiles(username, avatar_url)
     `)
     .eq('server_id', serverId)
     .order('created_at', { ascending: true });
@@ -29,19 +23,13 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
-  parent_message_id?: string | null;
 }) => {
   const { data, error } = await supabase
     .from('server_messages')
     .insert(messageData)
     .select(`
       *,
-      profiles(username, avatar_url),
-      parent_message:parent_message_id(
-        id,
-        content,
-        profiles(username)
-      )
+      profiles(username, avatar_url)
     `)
     .single();
 

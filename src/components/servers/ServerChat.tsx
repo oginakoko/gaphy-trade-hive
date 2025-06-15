@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server, ServerMessage } from '@/types/server';
@@ -91,7 +90,6 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
-      parent_message_id: replyingTo?.id,
     }, {
       onSuccess: () => {
         setReplyingTo(null);
