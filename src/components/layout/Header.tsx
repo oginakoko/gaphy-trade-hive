@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, Gem, Home, Lightbulb, LogOut, Menu, Settings, User, Users } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { Skeleton } from '@/components/ui/skeleton';
+import NotificationsBell from './NotificationsBell';
 
 const Header = () => {
   const { session } = useAuth();
@@ -64,7 +65,8 @@ const Header = () => {
           )}
         </nav>
 
-        <div className="flex-1 flex justify-end items-center gap-4">
+        <div className="flex-1 flex justify-end items-center gap-2">
+            {session && <NotificationsBell />}
             {session ? (
               isLoadingProfile ? (
                  <div className="flex items-center gap-2">

@@ -7,6 +7,7 @@ import { Gem, Bot } from 'lucide-react';
 import GaphyBot from '@/components/landing/GaphyBot';
 import { useAnalysisFeed } from '@/hooks/useAnalysisFeed';
 import Feed from '@/components/analysis/Feed';
+import ServerRecommendations from '@/components/analysis/ServerRecommendations';
 
 const Analysis = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
@@ -17,14 +18,17 @@ const Analysis = () => {
     <>
       <Header />
       <main className="py-8 container mx-auto px-4">
-        <div className="flex justify-center">
-            <div className="w-full max-w-xl space-y-8">
+        <div className="grid lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 space-y-8">
                 <Feed 
                     feed={feed}
                     isLoading={isLoading}
                     error={error as Error | null}
                     userLikes={userLikes}
                 />
+            </div>
+            <div className="hidden lg:block">
+              <ServerRecommendations />
             </div>
         </div>
       </main>

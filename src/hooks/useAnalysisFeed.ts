@@ -1,9 +1,7 @@
-
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { TradeIdea, Ad, AffiliateLink } from '@/types';
-import { Server } from '@/types/server';
 import { useAuth } from '@/hooks/useAuth';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -30,21 +28,6 @@ const fetchApprovedAds = async (): Promise<Ad[]> => {
     return data as Ad[];
 };
 
-const fetchPublicServers = async (): Promise<Server[]> => {
-    const { data, error } = await supabase
-        .from('servers')
-        .select('*, profiles!owner_id(username, avatar_url)')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-    if (error) {
-        console.error('Error fetching servers:', error);
-        return [];
-    }
-    return data || [];
-};
-
 const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
     const { data, error } = await supabase
         .from('affiliate_links')
@@ -58,7 +41,7 @@ const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
     return data || [];
 };
 
-export type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' }) | (Server & { viewType: 'server' });
+export type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' });
 
 export const useAnalysisFeed = () => {
     const { user } = useAuth();
@@ -76,11 +59,6 @@ export const useAnalysisFeed = () => {
     const { data: affiliateLinks, isLoading: isLoadingAffiliates, error: affiliatesError } = useQuery({
         queryKey: ['affiliateLinks'],
         queryFn: fetchAffiliateLinks,
-    });
-    
-    const { data: servers, isLoading: isLoadingServers, error: serversError } = useQuery({
-        queryKey: ['publicServersForFeed'],
-        queryFn: fetchPublicServers,
     });
     
     const { data: userLikesData } = useQuery({
@@ -102,7 +80,6 @@ export const useAnalysisFeed = () => {
     const feed = useMemo((): FeedItem[] => {
         const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));
         const approvedAds: (Ad & { viewType: 'ad' })[] = (ads || []).map(ad => ({ ...ad, viewType: 'ad' }));
-        const publicServers: (Server & { viewType: 'server' })[] = (servers || []).map(server => ({ ...server, viewType: 'server' }));
     
         const promotedLinks: (Ad & { viewType: 'ad' })[] = (affiliateLinks || []).map((link, index) => ({
             id: -(index + 1),
@@ -124,7 +101,7 @@ export const useAnalysisFeed = () => {
         }));
         
         const allAds = [...approvedAds, ...promotedLinks];
-        const allContent = [...publicServers, ...allAds];
+        const allContent = [...allAds];
     
         if (!ideas.length) {
             return allContent;
@@ -146,10 +123,10 @@ export const useAnalysisFeed = () => {
         }
         
         return combinedFeed;
-      }, [tradeIdeas, ads, affiliateLinks, servers]);
+      }, [tradeIdeas, ads, affiliateLinks]);
 
-      const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates || isLoadingServers;
-      const error = ideasError || adsError || affiliatesError || serversError;
+      const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates;
+      const error = ideasError || adsError || affiliatesError;
 
       return { feed, isLoading, error, userLikes };
 };

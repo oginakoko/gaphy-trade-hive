@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -13,6 +15,7 @@ import { toast } from '@/components/ui/use-toast';
 const Servers = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const { 
     publicServers, 
@@ -21,6 +24,18 @@ const Servers = () => {
     joinServer, 
     isJoining 
   } = useServers();
+
+  useEffect(() => {
+    const serverIdFromUrl = searchParams.get('server_id');
+    if (serverIdFromUrl && !isLoading) {
+      const serverToSelect = userServers.find(s => s.id === serverIdFromUrl);
+      if (serverToSelect) {
+        setSelectedServer(serverToSelect);
+        searchParams.delete('server_id');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, isLoading, userServers, setSearchParams]);
 
   useEffect(() => {
     if (selectedServer) {

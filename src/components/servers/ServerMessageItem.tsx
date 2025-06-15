@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { ServerMessage } from '@/types/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,6 +19,22 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemPr
   const isServerOwner = user?.id === serverOwnerId;
   const canDelete = isAuthor || isServerOwner;
 
+  const renderMessageContent = (content: string) => {
+    const mentionRegex = /@(\w+)/g;
+    const parts = content.split(mentionRegex);
+
+    return parts.map((part, index) => {
+        if (index % 2 === 1) {
+            return (
+                <span key={index} className="text-brand-green font-semibold bg-brand-green/10 px-1 rounded mx-0.5">
+                    @{part}
+                </span>
+            );
+        }
+        return part;
+    });
+};
+
   return (
     <div className="flex gap-3 group relative pr-8">
       <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
@@ -36,7 +53,7 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemPr
           </span>
         </div>
         {msg.content && (
-          <p className="text-gray-300 text-sm whitespace-pre-wrap">{msg.content}</p>
+          <p className="text-gray-300 text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>
         )}
         {msg.media_url && (
           <div className="mt-2">

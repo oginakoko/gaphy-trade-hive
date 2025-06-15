@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server } from '@/types/server';
@@ -12,6 +13,7 @@ import EditServerDialog from './EditServerDialog';
 import DeleteServerDialog from './DeleteServerDialog';
 import ManageMembersDialog from './ManageMembersDialog';
 import { useServers } from '@/hooks/useServers';
+import { useServerMembers } from '@/hooks/useServerMembers';
 
 interface ServerChatProps {
   server: Server;
@@ -22,8 +24,8 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const { user } = useAuth();
   const { messages, sendMessage, isSending, deleteMessage } = useServerMessages(initialServer.id);
   const { userServers, leaveServer } = useServers();
+  const { members } = useServerMembers(initialServer.id);
   
-  // Keep local state for the server to reflect updates without a full page reload
   const [server, setServer] = useState(initialServer);
 
   useEffect(() => {
@@ -73,11 +75,23 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       }
     }
 
+    const mentionRegex = /@(\w+)/g;
+    const mentioned_users = new Set<string>();
+    let match;
+    while ((match = mentionRegex.exec(message)) !== null) {
+      const username = match[1];
+      const mentionedUser = members.find(m => m.username === username);
+      if (mentionedUser && mentionedUser.id !== user?.id) {
+        mentioned_users.add(mentionedUser.id);
+      }
+    }
+
     sendMessage({
       server_id: server.id,
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
+      mentioned_users: Array.from(mentioned_users),
     });
   };
 
@@ -124,7 +138,7 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
 
       <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} serverOwnerId={server.owner_id} />
 
-      <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} />
+      <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} members={members} />
 
       <EditServerDialog
         server={server}
