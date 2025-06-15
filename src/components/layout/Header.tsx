@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button';
-import { Gem, GraduationCap, Home, Lightbulb, Lock, LogOut, Settings, User, Users } from 'lucide-react';
+import { Gem, Home, Lightbulb, LogOut, Settings, User, Users } from 'lucide-react';
 
 const Header = () => {
   const { session, user } = useAuth();
@@ -28,7 +29,7 @@ const Header = () => {
     <header className="bg-brand-gray-200 border-b border-brand-gray-400/40 sticky top-0 z-50">
       <div className="container mx-auto p-4 flex items-center justify-between">
         <Link to="/" className="text-xl font-bold text-white">
-          Gaphy.AI
+          GaphyHive
         </Link>
 
         <nav className="hidden md:flex items-center space-x-4">
@@ -78,7 +79,7 @@ const Header = () => {
                   <Gem className="mr-2 h-4 w-4" />
                   <span>Create Ad</span>
               </DropdownMenuItem>
-              {session?.user.id === 'e95c934a-449c-4169-8995-98c4ef49994c' && (
+              {session?.user.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Admin</DropdownMenuLabel>
