@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
 import Header from '@/components/layout/Header';
-import AffiliateLinks from '@/components/AffiliateLinks';
 import TradeIdeaCard from '@/components/trade-ideas/TradeIdeaCard';
 import { Button } from '@/components/ui/button';
 import DonationModal from '@/components/DonationModal';
@@ -11,7 +10,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { TradeIdea, Ad } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-import { Link } from 'react-router-dom';
 import AdCard from '@/components/ads/AdCard';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -38,6 +36,28 @@ const fetchApprovedAds = async (): Promise<Ad[]> => {
     return data as Ad[];
 };
 
+// Type and fetcher for affiliate links, as they'll be mixed into the ads feed
+interface AffiliateLink {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  icon: string;
+}
+
+const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
+    const { data, error } = await supabase
+        .from('affiliate_links')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching affiliate links:', error);
+        return [];
+    }
+    return data || [];
+};
+
 
 const Analysis = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
@@ -50,6 +70,11 @@ const Analysis = () => {
   const { data: ads, isLoading: isLoadingAds, error: adsError } = useQuery({
     queryKey: ['approvedAds'],
     queryFn: fetchApprovedAds,
+  });
+
+  const { data: affiliateLinks, isLoading: isLoadingAffiliates, error: affiliatesError } = useQuery({
+    queryKey: ['affiliateLinks'],
+    queryFn: fetchAffiliateLinks,
   });
 
   const { data: userLikesData } = useQuery({
@@ -74,8 +99,26 @@ const Analysis = () => {
     const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));
     const approvedAds: (Ad & { viewType: 'ad' })[] = (ads || []).map(ad => ({ ...ad, viewType: 'ad' }));
 
+    const promotedLinks: (Ad & { viewType: 'ad' })[] = (affiliateLinks || []).map(link => ({
+        id: `affiliate-${link.id}`,
+        user_id: 'system-affiliate',
+        title: link.title,
+        content: link.description,
+        image_url: null,
+        link_url: link.url,
+        status: 'approved',
+        created_at: new Date().toISOString(),
+        profiles: {
+            username: 'Promoted',
+            avatar_url: '/placeholder.svg'
+        },
+        viewType: 'ad'
+    } as Ad & { viewType: 'ad' }));
+    
+    const allAds = [...approvedAds, ...promotedLinks];
+
     if (!ideas.length) {
-        return approvedAds;
+        return allAds;
     }
     
     // Intersperse ads into ideas
@@ -85,33 +128,33 @@ const Analysis = () => {
     const adInterval = 4; // Show an ad every 4 trade ideas
 
     for (let i = adInterval; i < feed.length; i += (adInterval + 1)) {
-        if (adIndex < approvedAds.length) {
-            feed.splice(i, 0, approvedAds[adIndex]);
+        if (adIndex < allAds.length) {
+            feed.splice(i, 0, allAds[adIndex]);
             adIndex++;
         }
     }
 
     // Add any remaining ads to the end
-    if (adIndex < approvedAds.length) {
-        feed.push(...approvedAds.slice(adIndex));
+    if (adIndex < allAds.length) {
+        feed.push(...allAds.slice(adIndex));
     }
     
     return feed;
-  }, [tradeIdeas, ads]);
+  }, [tradeIdeas, ads, affiliateLinks]);
 
-  const isLoading = isLoadingIdeas || isLoadingAds;
-  const error = ideasError || adsError;
+  const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates;
+  const error = ideasError || adsError || affiliatesError;
 
   return (
     <>
       <Header />
-      <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-8 container mx-auto px-4">
-        <div className="lg:col-span-2 flex justify-center">
+      <main className="py-8 container mx-auto px-4">
+        <div className="flex justify-center">
             <div className="w-full max-w-xl space-y-8">
                 {isLoading && (
                     <>
-                    <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
-                    <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
+                    <Skeleton className="h-[380px] w-full rounded-xl glass-card" />
+                    <Skeleton className="h-[380px] w-full rounded-xl glass-card" />
                     </>
                 )}
                 {error && <p className="text-center text-red-500 p-8 glass-card">Error loading content: {(error as Error).message}</p>}
@@ -141,10 +184,6 @@ const Analysis = () => {
                 )}
             </div>
         </div>
-        <aside className="space-y-8">
-          <AffiliateLinks />
-          {/* "Post Your Ad" card removed as per request to make it more subtle */}
-        </aside>
       </main>
       
       <Button 
@@ -160,4 +199,3 @@ const Analysis = () => {
 };
 
 export default Analysis;
-
