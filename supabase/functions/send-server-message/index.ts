@@ -3,9 +3,18 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
 
 Deno.serve(async (req) => {
+  // Enhanced logging for debugging
+  console.log(`[${new Date().toISOString()}] send-server-message invoked. Method: ${req.method}`);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log('Handling OPTIONS preflight request.');
+    return new Response('ok', {
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST',
+      },
+    })
   }
 
   try {
@@ -27,6 +36,7 @@ Deno.serve(async (req) => {
         status: 400,
       })
     }
+    console.log('Request body parsed successfully.');
 
     const { messageData } = body
     const { server_id, user_id, content, media_url, media_type, mentioned_users } = messageData
@@ -53,11 +63,19 @@ Deno.serve(async (req) => {
       .select('*, profiles(username, avatar_url)')
       .single()
 
-    if (messageError) throw messageError
-    if (!newMessage) throw new Error('Failed to create message.')
+    if (messageError) {
+      console.error('Error inserting message:', messageError);
+      throw messageError
+    }
+    if (!newMessage) {
+      console.error('Failed to create message, insert returned no data.');
+      throw new Error('Failed to create message.')
+    }
+    console.log('Message inserted successfully:', newMessage.id);
 
     // 2. Create notifications if there are mentions
     if (mentioned_users && mentioned_users.length > 0) {
+      console.log(`Creating notifications for ${mentioned_users.length} mentioned users.`);
       const notifications = mentioned_users.map((mentionedId: string) => ({
         recipient_id: mentionedId,
         sender_id: user_id,
@@ -73,15 +91,18 @@ Deno.serve(async (req) => {
       if (notificationError) {
         // Log the error but don't fail the whole request as the message was sent.
         console.error('Failed to create notifications:', notificationError.message)
+      } else {
+        console.log('Notifications created successfully.');
       }
     }
 
+    console.log('Returning successful response for message ID:', newMessage.id);
     return new Response(JSON.stringify({ data: newMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error('Error in send-server-message function:', error.message)
+    console.error(`[ERROR] in send-server-message: ${error.message}`, { error });
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
