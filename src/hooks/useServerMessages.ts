@@ -22,44 +22,17 @@ const sendMessage = async (messageData: {
   media_type?: 'image' | 'video' | 'audio' | 'document';
   mentioned_users?: string[];
 }) => {
-  const { mentioned_users, ...messageToInsert } = messageData;
-  console.log('Attempting to send message:', messageToInsert);
-  const { data, error } = await supabase
-    .from('server_messages')
-    .insert(messageToInsert)
-    .select('*, profiles(username, avatar_url)')
-    .single();
+  const { data, error } = await supabase.functions.invoke('send-server-message', {
+    body: { messageData },
+  });
 
   if (error) {
-    console.error('Error sending message:', error);
-    throw new Error(error.message);
+    console.error('Error invoking send-server-message function:', error);
+    throw new Error(error.message || 'An unknown error occurred when sending the message.');
   }
   
-  console.log('Message sent successfully:', data);
-
-  if (data && mentioned_users && mentioned_users.length > 0) {
-    console.log('Creating notifications for mentioned users:', mentioned_users);
-    const notifications = mentioned_users.map(mentionedId => ({
-      recipient_id: mentionedId,
-      sender_id: messageData.user_id,
-      type: 'mention' as const,
-      reference_id: messageData.server_id,
-      server_id: messageData.server_id,
-    }));
-
-    const { error: notificationError } = await supabase
-      .from('notifications')
-      .insert(notifications);
-    
-    if (notificationError) {
-      console.error('Failed to create notifications:', notificationError);
-      throw new Error(`Message sent, but notification failed: ${notificationError.message}`);
-    } else {
-      console.log('Notifications created successfully.');
-    }
-  }
-
-  return data;
+  // The edge function returns an object with a 'data' property containing the new message
+  return data.data;
 };
 
 const deleteMessage = async (messageId: string) => {
