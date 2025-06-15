@@ -1,18 +1,21 @@
 
 import { TradeIdea } from '@/types';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import LikeButton from './LikeButton';
+import { Button } from '@/components/ui/button';
 
 interface TradeIdeaCardProps {
   idea: TradeIdea;
   likesCount: number;
   userHasLiked: boolean;
+  isAdmin: boolean;
+  onEdit: (idea: TradeIdea) => void;
 }
 
-const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) => {
+const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: TradeIdeaCardProps) => {
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
   
@@ -21,24 +24,35 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
     : idea.breakdown.trim();
 
   return (
-    <div className="group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10">
+    <div className="relative group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10 h-full">
+      {isAdmin && (
+            <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10 h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+                onClick={() => onEdit(idea)}
+            >
+                <Edit size={16} />
+                <span className="sr-only">Edit Idea</span>
+            </Button>
+        )}
       {idea.image_url && 
         <Link to={`/trade-ideas/${idea.id}`} className="block">
-          <img src={idea.image_url} alt={idea.title} className="w-full h-32 object-cover" />
+          <img src={idea.image_url} alt={idea.title} className="w-full h-20 object-cover" />
         </Link>
       }
       <div className="p-3 flex flex-col flex-grow">
           <div className="flex items-center gap-2 mb-2">
-          <img src={authorAvatar} alt={authorName} className="h-8 w-8 rounded-full bg-brand-gray-200 object-cover" />
+          <img src={authorAvatar} alt={authorName} className="h-6 w-6 rounded-full bg-brand-gray-200 object-cover" />
           <div>
               <p className="font-bold text-white text-sm">{authorName}</p>
-              <p className="text-sm text-brand-green">{idea.instrument}</p>
+              <p className="text-xs text-brand-green">{idea.instrument}</p>
           </div>
           </div>
-          <h3 className="text-base font-bold text-gray-300 mb-2 group-hover:text-white transition-colors">
+          <h3 className="text-sm font-bold text-gray-300 mb-2 group-hover:text-white transition-colors">
             <Link to={`/trade-ideas/${idea.id}`} className="hover:text-white transition-colors">{idea.title}</Link>
           </h3>
-          <div className="prose prose-sm prose-invert text-gray-400 mb-2 flex-grow max-w-none overflow-hidden">
+          <div className="text-xs text-gray-400 mb-2 flex-grow max-w-none overflow-hidden">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {snippet}
             </ReactMarkdown>
@@ -59,9 +73,9 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
                       ))}
                   </div>
               </div>
-              <Link to={`/trade-ideas/${idea.id}`} className="flex items-center gap-1 text-brand-green text-sm">
+              <Link to={`/trade-ideas/${idea.id}`} className="flex items-center gap-1 text-brand-green text-xs">
                   Read More
-                  <ArrowUpRight size={16} className="transform transition-transform duration-300 group-hover:rotate-45" />
+                  <ArrowUpRight size={14} className="transform transition-transform duration-300 group-hover:rotate-45" />
               </Link>
           </div>
       </div>
