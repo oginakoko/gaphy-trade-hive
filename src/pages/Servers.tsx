@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -125,7 +124,7 @@ const Servers = () => {
             {/* Public Servers */}
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">
-                Discover Public Servers
+                Discover Public Gaphy Servers
               </h2>
               
               {isLoading ? (

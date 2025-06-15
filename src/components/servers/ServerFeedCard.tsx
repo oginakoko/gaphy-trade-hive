@@ -18,7 +18,7 @@ const ServerFeedCard = ({ server }: ServerFeedCardProps) => {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2 text-brand-green mb-2">
           <ServerIcon size={16} />
-          <span className="text-sm font-medium">Discover Server</span>
+          <span className="text-sm font-medium">Discover Gaphy Server</span>
         </div>
         
         <div className="flex items-center gap-3">
