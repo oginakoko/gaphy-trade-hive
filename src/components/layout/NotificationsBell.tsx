@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '../ui/skeleton';
 
 const getNotificationContent = (notification: Notification) => {
-    const { type, sender, server, reference_id, comments } = notification;
+    const { type, sender, server, reference_id } = notification;
     const senderName = <span className="font-bold">{sender.username}</span>;
     const serverName = <span className="font-bold">{server?.name}</span>;
 
@@ -35,7 +34,7 @@ const getNotificationContent = (notification: Notification) => {
         case 'new_comment':
             return {
                 text: <>{senderName} commented on your post.</>,
-                path: comments?.trade_idea_id ? `/trade-idea/${comments.trade_idea_id}` : '/analysis'
+                path: reference_id ? `/trade-idea/${reference_id}` : '/analysis'
             };
         case 'new_like':
             return {

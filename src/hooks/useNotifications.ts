@@ -16,7 +16,7 @@ export interface Notification {
     server_id: string | null;
     is_read: boolean;
     sender: Pick<Profile, 'username' | 'avatar_url'>;
-    server: Pick<Server, 'id', 'name'> | null;
+    server: Pick<Server, 'id' | 'name'> | null;
 }
 
 export const useNotifications = () => {
