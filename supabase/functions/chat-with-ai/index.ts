@@ -37,85 +37,88 @@ const mergeConsecutiveMessages = (messages: GeminiMessage[]): GeminiMessage[] =>
   return merged
 }
 
+// Always wrap the main handler in a try/catch
 Deno.serve(async (req) => {
-  console.log('=== Edge Function Start ===')
-  console.log('Method:', req.method)
-  console.log('URL:', req.url)
-  
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request')
-    return new Response('ok', { headers: corsHeaders })
-  }
-
   try {
-    console.log('Reading request body...')
-    let requestBody
+    console.log('=== [chat-with-ai] Edge Function Start ===')
+    console.log('Request method:', req.method, 'URL:', req.url)
+
+    // CORS preflight
+    if (req.method === 'OPTIONS') {
+      console.log('[chat-with-ai] OPTIONS preflight hit')
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    // Try to parse body
+    let requestBody: any
     try {
       requestBody = await req.json()
-    } catch (e) {
-      console.error('Failed to parse JSON:', e)
-      throw new Error('Invalid JSON in request body')
+      if (!requestBody) throw new Error('Request body JSON is empty');
+      console.log('[chat-with-ai] Parsed body:', JSON.stringify(requestBody))
+    } catch (error) {
+      console.error('[chat-with-ai] Failed parsing request body:', error)
+      return new Response(JSON.stringify({
+        error: 'Invalid JSON body',
+        type: 'bad_request'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
     }
 
+    // Messages received?
     const { messages } = requestBody
-    console.log('Request body parsed successfully')
-
     if (!messages || !Array.isArray(messages)) {
-      console.error('Invalid messages:', messages)
-      throw new Error('Messages must be an array')
+      console.error('[chat-with-ai] No valid "messages" array received')
+      return new Response(JSON.stringify({
+        error: 'Missing or invalid messages array in body',
+        type: 'bad_request'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
     }
 
-    console.log('Messages count:', messages.length)
-
-    // Check environment variables
+    // ENV validation
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    console.log('Environment check:')
-    console.log('- SUPABASE_URL exists:', !!supabaseUrl)
-    console.log('- SERVICE_ROLE_KEY exists:', !!supabaseServiceKey)
-    
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing required environment variables')
-      throw new Error('Server configuration error: Missing environment variables')
+      console.error('[chat-with-ai] Supabase env missing', { supabaseUrl, supabaseServiceKey })
+      return new Response(JSON.stringify({
+        error: 'Function configuration error: missing env vars',
+        type: 'server_error'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 })
     }
 
-    // Create Supabase client
-    console.log('Creating Supabase client...')
+    // Supabase Client
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get the Gemini API key
-    console.log('Fetching API key from database...')
-    const { data: apiKeyData, error: apiKeyError } = await serviceClient
-      .from('app_config')
-      .select('value')
-      .eq('key', GEMINI_API_KEY_ID)
-      .single()
-
-    if (apiKeyError) {
-      console.error('Database error:', apiKeyError)
-      throw new Error('Failed to fetch API configuration')
+    // Fetch Gemini API key from db
+    let apiKeyData, apiKeyError;
+    try {
+      const { data, error } = await serviceClient
+        .from('app_config')
+        .select('value')
+        .eq('key', GEMINI_API_KEY_ID)
+        .single()
+      apiKeyData = data
+      apiKeyError = error
+    } catch (err) {
+      apiKeyError = err
     }
-
-    if (!apiKeyData?.value) {
-      console.error('API key not found in database')
-      throw new Error('AI service is not configured. Please contact support.')
+    if (apiKeyError || !apiKeyData?.value) {
+      console.error('[chat-with-ai] Failed to get Gemini key:', apiKeyError, apiKeyData)
+      return new Response(JSON.stringify({
+        error: 'AI service not configured. Ask admin to add Gemini API key.',
+        type: 'not_configured'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 })
     }
-
     const geminiApiKey = apiKeyData.value
-    console.log('API key retrieved successfully')
 
-    // Prepare Gemini API request
+    // Prepare for Gemini API
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`
 
-    // Format messages for Gemini
+    // Format messages
     const geminiMessages: GeminiMessage[] = messages.map((msg: { sender: string; text: string }) => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.text }],
     }))
 
-    // Add system prompt
+    // Add initial system/context prompts
     const initialContents = [
       {
         role: 'user',
@@ -127,47 +130,58 @@ Deno.serve(async (req) => {
       },
       ...geminiMessages,
     ]
-    
     const contents = mergeConsecutiveMessages(initialContents)
-    console.log('Prepared', contents.length, 'messages for Gemini')
+    console.log('[chat-with-ai] Sending to Gemini. Count:', contents.length)
 
     // Call Gemini API
-    console.log('Making request to Gemini API...')
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ contents }),
-    })
-
-    console.log('Gemini API response status:', geminiResponse.status)
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text()
-      console.error('Gemini API error response:', errorText)
-      throw new Error(`AI service returned error: ${geminiResponse.status}`)
+    let geminiResponse: Response
+    try {
+      geminiResponse = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents }),
+      })
+    } catch (error) {
+      console.error('[chat-with-ai] Error calling Gemini:', error)
+      return new Response(JSON.stringify({
+        error: 'Could not reach AI service (Gemini): ' + (error?.message || error),
+        type: 'upstream_error'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 })
     }
 
-    const geminiData = await geminiResponse.json()
-    console.log('Gemini API response received successfully')
-    
-    const botResponseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that. Please try rephrasing your question."
+    if (!geminiResponse.ok) {
+      const errText = await geminiResponse.text()
+      console.error('[chat-with-ai] Gemini API error', geminiResponse.status, errText)
+      return new Response(JSON.stringify({
+        error: 'Gemini API returned error: ' + errText,
+        type: 'ai_error'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 })
+    }
 
-    console.log('Sending successful response')
+    // Parse result
+    let geminiData
+    try {
+      geminiData = await geminiResponse.json()
+    } catch (error) {
+      console.error('[chat-with-ai] Failed to parse Gemini JSON:', error)
+      return new Response(JSON.stringify({
+        error: 'AI service response was malformed',
+        type: 'ai_error'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 })
+    }
+
+    const botResponseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+       "I'm not sure how to respond. Please try rephrasing your question."
+
     return new Response(JSON.stringify({ reply: botResponseText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
-
   } catch (error) {
-    console.error('=== Edge Function Error ===')
-    console.error('Error type:', error.constructor.name)
-    console.error('Error message:', error.message)
-    console.error('Error stack:', error.stack)
-    
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Internal server error',
+    // Catch all: *always* return JSON + CORS!
+    console.error('[chat-with-ai] Handler crashed:', error)
+    return new Response(JSON.stringify({
+      error: (error && error.message) ? error.message : 'Internal server error',
       type: 'server_error'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
