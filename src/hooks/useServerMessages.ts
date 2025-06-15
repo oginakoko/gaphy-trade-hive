@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,7 +43,7 @@ const sendMessage = async (messageData: {
       recipient_id: mentionedId,
       sender_id: messageData.user_id,
       type: 'mention' as const,
-      reference_id: data.id,
+      reference_id: messageData.server_id,
       server_id: messageData.server_id,
     }));
 
