@@ -54,6 +54,7 @@ const sendMessage = async (messageData: {
     
     if (notificationError) {
       console.error('Failed to create notifications:', notificationError);
+      throw new Error(`Message sent, but notification failed: ${notificationError.message}`);
     } else {
       console.log('Notifications created successfully.');
     }

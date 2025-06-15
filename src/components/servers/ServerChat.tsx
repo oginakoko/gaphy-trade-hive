@@ -115,6 +115,14 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       media_url: mediaUrl,
       media_type: mediaType,
       mentioned_users: validMentionedUsers,
+    }, {
+      onError: (error: any) => {
+        toast({
+          title: "Error sending message",
+          description: error.message || "An unknown error occurred.",
+          variant: "destructive",
+        });
+      },
     });
   };
 
