@@ -99,8 +99,8 @@ const Analysis = () => {
     const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));
     const approvedAds: (Ad & { viewType: 'ad' })[] = (ads || []).map(ad => ({ ...ad, viewType: 'ad' }));
 
-    const promotedLinks: (Ad & { viewType: 'ad' })[] = (affiliateLinks || []).map(link => ({
-        id: `affiliate-${link.id}`,
+    const promotedLinks: (Ad & { viewType: 'ad' })[] = (affiliateLinks || []).map((link, index) => ({
+        id: -(index + 1), // Use a unique negative number to avoid conflicts with real ad IDs
         user_id: 'system-affiliate',
         title: link.title,
         content: link.description,
@@ -112,8 +112,12 @@ const Analysis = () => {
             username: 'Promoted',
             avatar_url: '/placeholder.svg'
         },
+        // Add missing properties to conform to Ad type
+        start_date: null,
+        end_date: null,
+        cost: null,
         viewType: 'ad'
-    } as Ad & { viewType: 'ad' }));
+    }));
     
     const allAds = [...approvedAds, ...promotedLinks];
 
