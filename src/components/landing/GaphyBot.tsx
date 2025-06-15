@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -89,7 +90,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
       if (error.message.includes("not configured")) {
         errorMessage = "The AI assistant is not properly configured. Please contact support for assistance.";
       } else {
-        errorMessage = "Sorry, I'm having a little trouble right now. If the problem persists, please contact our support team at support@gaphyhive.com.";
+        errorMessage = "Sorry, I'm having a little trouble right now. If the problem persists, please contact our support team at [support@gaphyhive.com](mailto:support@gaphyhive.com).";
       }
       
       const botResponse: Message = { sender: 'bot', text: errorMessage };
@@ -159,7 +160,11 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
                 {msg.imageUrl && (
                   <img src={msg.imageUrl} alt="User upload" className="rounded-md mb-2 max-w-full h-auto" />
                 )}
-                {msg.text && <p className="text-sm">{msg.text}</p>}
+                {msg.text && (
+                  <div className="prose prose-sm prose-invert max-w-none [&_a]:text-brand-green [&_a:hover]:underline">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                  </div>
+                )}
               </div>
               {msg.sender === 'user' && (
                 <div className="p-2 bg-brand-gray-200 rounded-full flex-shrink-0 self-end">
