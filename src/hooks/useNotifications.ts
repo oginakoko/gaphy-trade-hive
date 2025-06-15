@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -27,12 +28,15 @@ export const useNotifications = () => {
     const fetchNotifications = async (userId: string) => {
         const { data, error } = await supabase
             .from('notifications')
-            .select('*, sender:profiles!inner!sender_id(username, avatar_url), server:servers(id, name), comments(trade_idea_id)')
+            .select('*, sender:profiles!sender_id(username, avatar_url), server:servers(id, name), comments:comments!reference_id(trade_idea_id)')
             .eq('recipient_id', userId)
             .order('created_at', { ascending: false })
             .limit(20);
 
-        if (error) throw error;
+        if (error) {
+            console.error("Error fetching notifications:", error);
+            throw error;
+        }
         
         // Supabase with postgrest returns an array for one-to-one relations, so we need to flatten it.
         const notificationsData = data?.map(n => ({
