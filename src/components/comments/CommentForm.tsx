@@ -1,4 +1,3 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,6 +31,14 @@ const CommentForm = ({ tradeIdeaId }: CommentFormProps) => {
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       if (!user) throw new Error('You must be logged in to comment.');
       
+      const { data: tradeIdea, error: ideaError } = await supabase
+        .from('trade_ideas')
+        .select('user_id')
+        .eq('id', tradeIdeaId)
+        .single();
+        
+      if (ideaError || !tradeIdea) throw new Error('Could not find the trade idea to comment on.');
+
       const { error } = await supabase.from('comments').insert({
         content: values.content,
         trade_idea_id: tradeIdeaId,
@@ -39,6 +46,15 @@ const CommentForm = ({ tradeIdeaId }: CommentFormProps) => {
       });
 
       if (error) throw new Error(error.message);
+
+      if (user.id !== tradeIdea.user_id) {
+        await supabase.from('notifications').insert({
+          recipient_id: tradeIdea.user_id,
+          sender_id: user.id,
+          type: 'new_comment',
+          reference_id: tradeIdeaId,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', tradeIdeaId] });

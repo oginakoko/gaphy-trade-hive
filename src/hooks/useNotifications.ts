@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,12 +11,12 @@ export interface Notification {
     created_at: string;
     recipient_id: string;
     sender_id: string;
-    type: 'mention' | string;
+    type: 'mention' | 'new_analysis' | 'new_comment' | 'new_like' | 'new_server' | string;
     reference_id: string;
-    server_id: string;
+    server_id: string | null;
     is_read: boolean;
     sender: Pick<Profile, 'username' | 'avatar_url'>;
-    server: Pick<Server, 'name'>;
+    server: Pick<Server, 'name'> | null;
 }
 
 export const useNotifications = () => {
@@ -53,19 +52,43 @@ export const useNotifications = () => {
                 async (payload) => {
                     queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
                     
-                    const newNotification = payload.new as { sender_id: string, server_id: string };
+                    const newNotification = payload.new as { sender_id: string, server_id: string | null, type: string };
                     try {
                         const { data: sender } = await supabase.from('profiles').select('username').eq('id', newNotification.sender_id).single();
-                        const { data: server } = await supabase.from('servers').select('name').eq('id', newNotification.server_id).single();
+                        const senderUsername = sender?.username || 'Someone';
 
-                        toast({
-                            title: `New Mention in #${server?.name || 'server'}`,
-                            description: `${sender?.username || 'Someone'} mentioned you.`,
-                        });
+                        if (newNotification.type === 'mention' && newNotification.server_id) {
+                            const { data: server } = await supabase.from('servers').select('name').eq('id', newNotification.server_id).single();
+                            toast({
+                                title: `New Mention in #${server?.name || 'server'}`,
+                                description: `${senderUsername} mentioned you.`,
+                            });
+                        } else if (newNotification.type === 'new_analysis') {
+                            toast({
+                                title: 'New Analysis Posted',
+                                description: `${senderUsername} posted a new trade idea.`,
+                            });
+                        } else if (newNotification.type === 'new_comment') {
+                            toast({
+                                title: 'New Comment',
+                                description: `${senderUsername} commented on your post.`,
+                            });
+                        } else if (newNotification.type === 'new_like') {
+                            toast({
+                                title: 'New Like',
+                                description: `${senderUsername} liked your post.`,
+                            });
+                        } else if (newNotification.type === 'new_server' && newNotification.server_id) {
+                             const { data: server } = await supabase.from('servers').select('name').eq('id', newNotification.server_id).single();
+                            toast({
+                                title: 'New Server to Discover',
+                                description: `Check out the new server: ${server?.name || 'New Server'}.`,
+                            });
+                        }
                     } catch (error) {
                          toast({
                             title: "New Notification",
-                            description: "You have a new mention.",
+                            description: "You have a new notification.",
                         });
                     }
                 }
