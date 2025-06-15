@@ -13,7 +13,7 @@ const Auth = () => {
 
     useEffect(() => {
         if (session) {
-            navigate('/admin');
+            navigate('/analysis');
         }
     }, [session, navigate]);
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,13 +84,17 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
 
     } catch (error: any) {
       console.error("Error calling chat-with-ai function:", error);
-      const errorMessage = error.message.includes("not configured") 
-        ? "The AI assistant is not configured. Please ask an admin to set the API key."
-        : "Sorry, I'm having a little trouble right now. Please try again later.";
+      let errorMessage: string;
+
+      if (error.message.includes("not configured")) {
+        errorMessage = "The AI assistant is not properly configured. Please contact support for assistance.";
+      } else {
+        errorMessage = "Sorry, I'm having a little trouble right now. If the problem persists, please contact our support team at support@gaphyhive.com.";
+      }
       
       const botResponse: Message = { sender: 'bot', text: errorMessage };
       setMessages(prev => [...prev, botResponse]);
-      toast({ title: 'Chatbot Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Chatbot Error', description: "An issue occurred with the AI assistant.", variant: 'destructive' });
     } finally {
       setIsBotThinking(false);
     }

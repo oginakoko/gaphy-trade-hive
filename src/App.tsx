@@ -21,6 +21,7 @@ import ManageAffiliateLinks from "./pages/admin/ManageAffiliateLinks";
 import ManageUsers from "./pages/admin/ManageUsers";
 import Analysis from "./pages/Analysis";
 import AuthGuard from "./components/auth/AuthGuard";
+import GuestGuard from "./components/auth/GuestGuard";
 import ManageApiKeys from "./pages/admin/ManageApiKeys";
 
 const queryClient = new QueryClient();
@@ -34,7 +35,9 @@ const App = () => (
         <AuthProvider>
           <MainLayout>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route element={<GuestGuard />}>
+                <Route path="/" element={<Index />} />
+              </Route>
               <Route path="/auth" element={<Auth />} />
               <Route path="/trade-ideas/:id" element={<TradeIdeaPage />} />
 
@@ -67,4 +70,3 @@ const App = () => (
 );
 
 export default App;
-
