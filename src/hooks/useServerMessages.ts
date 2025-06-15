@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,26 +22,30 @@ const sendMessage = async (messageData: {
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
 }) => {
-  const { data, error } = await supabase.functions.invoke('send-server-message', {
-    body: { messageData },
-  });
+  const { data, error } = await supabase
+    .from('server_messages')
+    .insert(messageData)
+    .select('*, profiles(username, avatar_url)')
+    .single();
 
   if (error) {
-    console.error('Error invoking send-server-message function:', error);
+    console.error('Error sending message:', error);
     throw new Error(error.message || 'An unknown error occurred when sending the message.');
   }
   
-  // The edge function returns an object with a 'data' property containing the new message
-  return data.data;
+  return data;
 };
 
 const deleteMessage = async (messageId: string) => {
-  const { data, error } = await supabase.functions.invoke('delete-server-message', {
-    body: { messageId },
-  });
+  const { error } = await supabase
+    .from('server_messages')
+    .delete()
+    .eq('id', messageId);
 
-  if (error) throw new Error(error.message);
-  return data;
+  if (error) {
+    console.error('Error deleting message:', error);
+    throw new Error(error.message || 'An unknown error occurred when deleting the message.');
+  }
 };
 
 export const useServerMessages = (serverId: string) => {
@@ -61,12 +66,30 @@ export const useServerMessages = (serverId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['serverMessages', serverId] });
     },
+    onError: (error) => {
+      console.error("Failed to send message:", error);
+      // Optionally show a toast to the user
+    }
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: deleteMessage,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['serverMessages', serverId] });
+    onMutate: async (messageId: string) => {
+        await queryClient.cancelQueries({ queryKey: ['serverMessages', serverId] });
+        const previousMessages = queryClient.getQueryData(['serverMessages', serverId]);
+        queryClient.setQueryData(
+          ['serverMessages', serverId],
+          (old: ServerMessage[] | undefined) => old ? old.filter(m => m.id !== messageId) : []
+        );
+        return { previousMessages };
+    },
+    onError: (err, variables, context) => {
+        if (context?.previousMessages) {
+            queryClient.setQueryData(['serverMessages', serverId], context.previousMessages);
+        }
+    },
+    onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ['serverMessages', serverId] });
     },
   });
 
