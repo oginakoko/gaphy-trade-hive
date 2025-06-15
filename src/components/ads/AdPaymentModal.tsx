@@ -39,10 +39,18 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
   const updateStatusMutation = useMutation({
     mutationFn: async () => {
         if (!ad) throw new Error("Ad not found.");
-        const { data, error } = await supabase.functions.invoke('update-ad-status', {
-            body: { adId: ad.id, status: 'pending_approval' },
-        })
-        if (error) throw error;
+        if (!user) throw new Error("User not authenticated.");
+
+        // Update ad status directly, relying on RLS for security
+        const { data, error } = await supabase
+            .from('ads')
+            .update({ status: 'pending_approval' })
+            .eq('id', ad.id);
+
+        if (error) {
+            console.error("Error confirming crypto payment:", error);
+            throw error;
+        }
         return data;
     },
     onSuccess: () => {
@@ -52,7 +60,7 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
         navigate('/');
     },
     onError: (error: any) => {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Error", description: error.message || "Could not confirm payment.", variant: "destructive" });
     }
   });
 
