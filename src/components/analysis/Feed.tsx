@@ -13,7 +13,7 @@ interface FeedProps {
 const Feed = ({ feed, isLoading, error, userLikes }: FeedProps) => {
     if (isLoading) {
         return (
-            <div className="space-y-8">
+            <div className="space-y-4">
                 <Skeleton className="h-[380px] w-full rounded-xl glass-card" />
                 <Skeleton className="h-[380px] w-full rounded-xl glass-card" />
             </div>
@@ -34,7 +34,7 @@ const Feed = ({ feed, isLoading, error, userLikes }: FeedProps) => {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-4">
             {feed.map((item) => (
                 <FeedItem key={`${item.viewType}-${item.id}`} item={item} userLikes={userLikes} />
             ))}

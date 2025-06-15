@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,27 +6,45 @@ import { Server, ServerMember } from '@/types/server';
 const fetchPublicServers = async (): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('servers')
-    .select('*, member_count, profiles!owner_id(username, avatar_url)')
+    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
   
-  return data as Server[];
+  const serversWithCount = (data as any[]).map(s => {
+      const { server_members, ...rest } = s;
+      return {
+          ...rest,
+          member_count: server_members[0]?.count ?? 0
+      };
+  });
+
+  return serversWithCount as Server[];
 };
 
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('server_members')
-    .select('servers!inner(*, member_count, profiles!owner_id(username, avatar_url))')
+    .select('servers!inner(*, profiles!owner_id(username, avatar_url), server_members(count))')
     .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
   if (!data) return [];
 
-  const servers = data.map(item => item.servers).filter(Boolean).flat();
+  const serversWithCount = (data as any[])
+    .map(item => item.servers)
+    .filter(Boolean)
+    .flat()
+    .map(server => {
+        const { server_members, ...rest } = server;
+        return {
+            ...rest,
+            member_count: server_members[0]?.count ?? 0
+        };
+    });
 
-  return servers as Server[];
+  return serversWithCount as Server[];
 };
 
 const createServer = async (serverData: {
@@ -103,11 +120,18 @@ const updateServer = async (serverData: {
     .from('servers')
     .update(updateData)
     .eq('id', id)
-    .select('*, member_count, profiles!owner_id(username, avatar_url)')
+    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Server;
+  
+  const { server_members, ...rest } = data as any;
+  const serverWithCount = {
+      ...rest,
+      member_count: server_members[0]?.count ?? 0
+  };
+
+  return serverWithCount as Server;
 };
 
 const deleteServer = async (serverId: string) => {

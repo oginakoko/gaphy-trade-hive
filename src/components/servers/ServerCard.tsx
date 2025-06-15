@@ -15,7 +15,7 @@ interface ServerCardProps {
 
 const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCardProps) => {
   return (
-    <Card className="glass-card hover:glass-card-hover transition-all duration-200">
+    <Card className="glass-card hover:glass-card-hover transition-all duration-200 flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
@@ -32,8 +32,8 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-gray-300 text-sm">{server.description}</p>
+      <CardContent className="space-y-4 flex-grow flex flex-col">
+        <p className="text-gray-300 text-sm flex-grow">{server.description}</p>
         
         <div className="flex items-center gap-4 text-sm text-gray-400">
           <div className="flex items-center gap-1">
