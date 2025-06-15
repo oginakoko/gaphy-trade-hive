@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Header from '@/components/layout/Header';
 import AffiliateLinks from '@/components/AffiliateLinks';
 import TradeIdeaCard from '@/components/trade-ideas/TradeIdeaCard';
@@ -8,10 +8,11 @@ import DonationModal from '@/components/DonationModal';
 import { Gem } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { TradeIdea } from '@/types';
+import { TradeIdea, Ad } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
+import AdCard from '@/components/ads/AdCard';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     const { data, error } = await supabase
@@ -25,13 +26,30 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     return data as TradeIdea[];
 };
 
+const fetchApprovedAds = async (): Promise<Ad[]> => {
+    const { data, error } = await supabase
+        .from('ads')
+        .select('*, profiles(username, avatar_url)')
+        .eq('status', 'approved');
+
+    if (error) {
+        throw new Error(error.message);
+    }
+    return data as Ad[];
+};
+
 
 const Analysis = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
   const { user } = useAuth();
-  const { data: tradeIdeas, isLoading, error } = useQuery({
+  const { data: tradeIdeas, isLoading: isLoadingIdeas, error: ideasError } = useQuery({
     queryKey: ['tradeIdeas'], 
     queryFn: fetchTradeIdeas
+  });
+
+  const { data: ads, isLoading: isLoadingAds, error: adsError } = useQuery({
+    queryKey: ['approvedAds'],
+    queryFn: fetchApprovedAds,
   });
 
   const { data: userLikesData } = useQuery({
@@ -50,6 +68,40 @@ const Analysis = () => {
 
   const userLikes = new Set(userLikesData);
 
+  type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' });
+
+  const combinedFeed = useMemo((): FeedItem[] => {
+    const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));
+    const approvedAds: (Ad & { viewType: 'ad' })[] = (ads || []).map(ad => ({ ...ad, viewType: 'ad' }));
+
+    if (!ideas.length) {
+        return approvedAds;
+    }
+    
+    // Intersperse ads into ideas
+    const feed: FeedItem[] = [...ideas];
+
+    let adIndex = 0;
+    const adInterval = 4; // Show an ad every 4 trade ideas
+
+    for (let i = adInterval; i < feed.length; i += (adInterval + 1)) {
+        if (adIndex < approvedAds.length) {
+            feed.splice(i, 0, approvedAds[adIndex]);
+            adIndex++;
+        }
+    }
+
+    // Add any remaining ads to the end
+    if (adIndex < approvedAds.length) {
+        feed.push(...approvedAds.slice(adIndex));
+    }
+    
+    return feed;
+  }, [tradeIdeas, ads]);
+
+  const isLoading = isLoadingIdeas || isLoadingAds;
+  const error = ideasError || adsError;
+
   return (
     <>
       <Header />
@@ -61,36 +113,35 @@ const Analysis = () => {
               <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
             </>
           )}
-          {error && <p className="md:col-span-2 text-center text-red-500 p-8 glass-card">Error loading trade ideas: {(error as Error).message}</p>}
-          {tradeIdeas?.map((idea) => {
-            const likesCount = idea.likes?.[0]?.count || 0;
-            const userHasLiked = userLikes.has(Number(idea.id));
-            return (
-              <TradeIdeaCard
-                key={idea.id}
-                idea={idea}
-                likesCount={likesCount}
-                userHasLiked={userHasLiked}
-              />
-            );
+          {error && <p className="md:col-span-2 text-center text-red-500 p-8 glass-card">Error loading content: {(error as Error).message}</p>}
+          
+          {combinedFeed.map((item) => {
+            if (item.viewType === 'idea') {
+              const likesCount = item.likes?.[0]?.count || 0;
+              const userHasLiked = userLikes.has(Number(item.id));
+              return (
+                <TradeIdeaCard
+                  key={`idea-${item.id}`}
+                  idea={item}
+                  likesCount={likesCount}
+                  userHasLiked={userHasLiked}
+                />
+              );
+            } else { // item.viewType === 'ad'
+              return <AdCard key={`ad-${item.id}`} ad={item} />;
+            }
           })}
-          {tradeIdeas?.length === 0 && !isLoading && !error && (
+
+          {combinedFeed.length === 0 && !isLoading && !error && (
             <div className="md:col-span-2 glass-card rounded-xl p-8 text-center">
-              <h3 className="text-xl font-bold text-white mb-2">No Trade Ideas Yet</h3>
-              <p className="text-gray-400">Be the first to see a new idea. Check back soon!</p>
+              <h3 className="text-xl font-bold text-white mb-2">No Content Yet</h3>
+              <p className="text-gray-400">Check back soon for new trade ideas and more!</p>
             </div>
           )}
         </div>
         <aside className="space-y-8">
           <AffiliateLinks />
-          <div className="glass-card rounded-xl p-6 text-center">
-            <h3 className="text-xl font-bold text-white mb-2">Post Your Ad</h3>
-            <p className="text-gray-400 mb-4">Reach a dedicated audience of traders and investors.</p>
-             <Button asChild className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80">
-              <Link to="/create-ad">Create an Ad</Link>
-            </Button>
-            <p className="text-xs text-gray-500 mt-2">Requires payment and admin approval.</p>
-          </div>
+          {/* "Post Your Ad" card removed as per request to make it more subtle */}
         </aside>
       </main>
       
