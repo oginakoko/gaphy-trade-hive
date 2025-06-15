@@ -43,7 +43,8 @@ export type Ad = {
   title: string;
   content: string;
   link_url: string;
-  image_url: string | null;
+  media_url: string | null;
+  media_type: 'image' | 'video' | null;
   status: 'pending_payment' | 'pending_approval' | 'approved' | 'rejected';
   start_date: string | null;
   end_date: string | null;

@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,7 +12,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/components/ui/use-toast";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ImageUploader from "../shared/ImageUploader";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { cn } from "@/lib/utils";
 import { format, differenceInDays } from "date-fns";
@@ -24,7 +24,8 @@ const adFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   content: z.string().min(10, "Content must be at least 10 characters").max(500),
   link_url: z.string().url("Must be a valid URL"),
-  image_url: z.string().url().nullable(),
+  media_url: z.string().url().nullable(),
+  media_type: z.enum(['image', 'video']).nullable(),
   start_date: z.date({ required_error: "A start date is required." }),
   end_date: z.date({ required_error: "An end date is required." }),
 }).refine(data => data.end_date > data.start_date, {
@@ -41,6 +42,7 @@ export const AdForm = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [adForPayment, setAdForPayment] = useState<Ad | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const form = useForm<AdFormValues>({
         resolver: zodResolver(adFormSchema),
@@ -48,7 +50,8 @@ export const AdForm = () => {
             title: "",
             content: "",
             link_url: "",
-            image_url: null,
+            media_url: null,
+            media_type: null,
             start_date: undefined,
             end_date: undefined,
         },
@@ -67,6 +70,40 @@ export const AdForm = () => {
     };
     
     const totalCost = calculateCost();
+
+    const handleFileUpload = async (file: File) => {
+        if (!user) {
+            toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
+            return;
+        }
+        setIsUploading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('ad_media')
+                .upload(filePath, file, {
+                    contentType: file.type
+                });
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage.from('ad_media').getPublicUrl(filePath);
+            
+            form.setValue('media_url', publicUrl, { shouldValidate: true });
+            const mediaType = file.type.startsWith('video') ? 'video' : 'image';
+            form.setValue('media_type', mediaType, { shouldValidate: true });
+
+        } catch (error: any) {
+            toast({ title: "Upload Error", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const createAdMutation = useMutation({
         mutationFn: async (values: AdFormValues) => {
@@ -104,17 +141,36 @@ export const AdForm = () => {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
                         control={form.control}
-                        name="image_url"
+                        name="media_url"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Ad Image</FormLabel>
+                                <FormLabel>Ad Media (Image or Video)</FormLabel>
                                 <FormControl>
-                                    <ImageUploader
-                                        value={field.value || undefined}
-                                        onChange={field.onChange}
-                                        bucketName="ad_images"
-                                    />
+                                    <div>
+                                        <Input 
+                                            type="file" 
+                                            accept="image/*,video/mp4,video/quicktime"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    handleFileUpload(e.target.files[0]);
+                                                }
+                                            }}
+                                            disabled={isUploading}
+                                            className="mb-2"
+                                        />
+                                        {isUploading && <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</div>}
+                                        {field.value && !isUploading && (
+                                            <div className="mt-4 border rounded-md overflow-hidden">
+                                                {form.getValues('media_type') === 'video' ? (
+                                                    <video src={field.value} controls className="w-full max-h-60" />
+                                                ) : (
+                                                    <img src={field.value} alt="Ad preview" className="w-full h-auto max-h-60 object-contain" />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </FormControl>
+                                <FormDescription>Upload an image or a short video for your ad (max 50MB).</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -251,9 +307,9 @@ export const AdForm = () => {
                     )}
 
 
-                    <Button type="submit" disabled={createAdMutation.isPending || totalCost <= 0} className="w-full">
+                    <Button type="submit" disabled={createAdMutation.isPending || totalCost <= 0 || isUploading} className="w-full">
                         {createAdMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit Ad
+                        {isUploading ? 'Uploading Media...' : 'Submit Ad'}
                     </Button>
                 </form>
             </Form>

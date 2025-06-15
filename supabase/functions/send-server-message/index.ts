@@ -1,4 +1,3 @@
-
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
 
@@ -9,14 +8,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Edge Function: Missing Supabase environment variables.')
+      return new Response(JSON.stringify({ error: 'Server is not configured correctly.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      })
+    }
+
     const { messageData } = await req.json()
     const { server_id, user_id, content, media_url, media_type, mentioned_users } = messageData
 
     // Create a Supabase client with the user's auth token
     const authHeader = req.headers.get('Authorization')!
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       { global: { headers: { Authorization: authHeader } } }
     )
 
