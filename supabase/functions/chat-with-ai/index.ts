@@ -9,6 +9,28 @@ interface GeminiMessage {
   parts: [{ text: string }]
 }
 
+const mergeConsecutiveMessages = (messages: GeminiMessage[]): GeminiMessage[] => {
+  if (!messages.length) {
+    return []
+  }
+  const merged: GeminiMessage[] = []
+  // Use structuredClone for a deep copy to avoid modifying nested objects/arrays
+  let lastMessage = structuredClone(messages[0])
+
+  for (let i = 1; i < messages.length; i++) {
+    const currentMessage = messages[i]
+    if (currentMessage.role === lastMessage.role) {
+      // Merge text of consecutive messages from the same role
+      lastMessage.parts[0].text += `\n${currentMessage.parts[0].text}`
+    } else {
+      merged.push(lastMessage)
+      lastMessage = structuredClone(currentMessage)
+    }
+  }
+  merged.push(lastMessage)
+  return merged
+}
+
 Deno.serve(async (req) => {
   // This is needed for browser clients to call the function
   if (req.method === 'OPTIONS') {
@@ -51,7 +73,7 @@ Deno.serve(async (req) => {
     }))
 
     // Add a system prompt to give the AI its persona
-    const contents = [
+    const initialContents = [
       {
         role: 'user',
         parts: [{ text: "You are AlphaFinder, an expert trading assistant for the GaphyHive platform. Your goal is to provide insightful, concise, and helpful analysis on financial markets and trade ideas. Your persona is professional, but friendly and approachable. Keep your answers short and to the point. Do not provide financial advice. ALWAYS include a disclaimer at the end of your response that your analysis is for educational and informational purposes only and does not constitute financial advice. The user is asking you a question, here is the conversation history:" }],
@@ -62,6 +84,8 @@ Deno.serve(async (req) => {
       },
       ...geminiMessages,
     ]
+    
+    const contents = mergeConsecutiveMessages(initialContents)
 
     // Call the Gemini API
     const res = await fetch(geminiUrl, {
@@ -73,7 +97,7 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const errorBody = await res.text()
       console.error('Gemini API error:', errorBody)
-      throw new Error(`Gemini API request failed: ${errorBody}`)
+      throw new Error(`Gemini API request failed with status ${res.status}: ${errorBody}`)
     }
 
     const geminiData = await res.json()
@@ -91,4 +115,3 @@ Deno.serve(async (req) => {
     })
   }
 })
-
