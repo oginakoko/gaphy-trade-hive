@@ -13,10 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button';
-import { Gem, Home, Lightbulb, LogOut, Settings, User, Users } from 'lucide-react';
+import { ChevronDown, Gem, Home, Lightbulb, LogOut, Settings, User, Users } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Header = () => {
-  const { session, user } = useAuth();
+  const { session } = useAuth();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -57,42 +60,55 @@ const Header = () => {
 
         <div className="flex-1 flex justify-end">
             {session ? (
-            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.username as string} />
-                    <AvatarFallback>{(user?.user_metadata?.username as string)?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 mr-2">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { navigate('/create-ad'); setIsMenuOpen(false); }}>
-                    <Gem className="mr-2 h-4 w-4" />
-                    <span>Create Ad</span>
-                </DropdownMenuItem>
-                {session?.user.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
-                    <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Admin</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Admin Panel</span>
-                    </DropdownMenuItem>
-                    </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+              isLoadingProfile ? (
+                 <div className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-24 rounded-md" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </div>
+              ) : (
+                <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center gap-2 p-1 pr-2 h-auto rounded-full hover:bg-brand-gray-300">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={profile?.avatar_url ?? undefined} alt={profile?.username ?? ''} />
+                          <AvatarFallback>{profile?.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <span className="hidden sm:inline text-white font-medium">{profile?.username}</span>
+                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 mr-2">
+                      <DropdownMenuLabel>
+                        <p className="font-medium">{profile?.username || "My Account"}</p>
+                        <p className="text-xs text-gray-400">Welcome back!</p>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}>
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { navigate('/create-ad'); setIsMenuOpen(false); }}>
+                          <Gem className="mr-2 h-4 w-4" />
+                          <span>Create Ad</span>
+                      </DropdownMenuItem>
+                      {session?.user.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
+                          <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Admin</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}>
+                              <Settings className="mr-2 h-4 w-4" />
+                              <span>Admin Panel</span>
+                          </DropdownMenuItem>
+                          </>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={signOut}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+              )
             ) : (
             <div className="hidden md:flex">
                 <Link to="/auth">

@@ -1,8 +1,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Profile } from "@/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,6 +12,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
 import { useEffect } from "react";
+import { useProfile } from "@/hooks/useProfile";
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be at most 50 characters").nullable(),
@@ -25,23 +25,7 @@ const ProfileForm = () => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
-    const { data: profile, isLoading: isLoadingProfile } = useQuery({
-        queryKey: ['profile', user?.id],
-        queryFn: async () => {
-            if (!user) return null;
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-            if (error && error.code !== 'PGRST116') { // PGRST116: single row not found
-                console.error("Error fetching profile:", error.message);
-                return null;
-            }
-            return data as Profile | null;
-        },
-        enabled: !!user,
-    });
+    const { data: profile, isLoading: isLoadingProfile } = useProfile();
     
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileFormSchema),
