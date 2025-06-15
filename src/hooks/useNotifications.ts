@@ -18,6 +18,7 @@ export interface Notification {
     is_read: boolean;
     sender: Pick<Profile, 'username' | 'avatar_url'>;
     server: Pick<Server, 'id' | 'name'> | null;
+    comments?: { trade_idea_id: string } | null;
 }
 
 export const useNotifications = () => {
@@ -27,13 +28,19 @@ export const useNotifications = () => {
     const fetchNotifications = async (userId: string) => {
         const { data, error } = await supabase
             .from('notifications')
-            .select('*, sender:profiles!sender_id(username, avatar_url), server:servers(id, name)')
+            .select('*, sender:profiles!sender_id(username, avatar_url), server:servers(id, name), comments(trade_idea_id)')
             .eq('recipient_id', userId)
             .order('created_at', { ascending: false })
             .limit(20);
 
         if (error) throw error;
-        return data as Notification[];
+        
+        // Supabase with postgrest returns an array for one-to-one relations, so we need to flatten it.
+        const notificationsData = data?.map(n => ({
+            ...n,
+            comments: Array.isArray(n.comments) ? n.comments[0] : n.comments
+        }))
+        return notificationsData as Notification[];
     };
 
     const { data: notifications, isLoading, error } = useQuery({

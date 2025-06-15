@@ -39,20 +39,21 @@ const CommentForm = ({ tradeIdeaId }: CommentFormProps) => {
         
       if (ideaError || !tradeIdea) throw new Error('Could not find the trade idea to comment on.');
 
-      const { error } = await supabase.from('comments').insert({
+      const { data: newComment, error } = await supabase.from('comments').insert({
         content: values.content,
         trade_idea_id: tradeIdeaId,
         user_id: user.id,
-      });
+      }).select('id').single();
 
       if (error) throw new Error(error.message);
+      if (!newComment) throw new Error('Failed to create comment.');
 
       if (user.id !== tradeIdea.user_id) {
         await supabase.from('notifications').insert({
           recipient_id: tradeIdea.user_id,
           sender_id: user.id,
           type: 'new_comment',
-          reference_id: tradeIdeaId,
+          reference_id: newComment.id,
         });
       }
     },
