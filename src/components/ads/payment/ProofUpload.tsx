@@ -36,7 +36,9 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
                     payment_proof_url: paymentProofUrl,
                     payment_method: paymentMethod
                 })
-                .eq('id', ad.id);
+                .eq('id', ad.id)
+                .select()
+                .single();
 
             if (error) throw error;
             return data;
@@ -48,6 +50,7 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
             navigate('/');
         },
         onError: (error: any) => {
+            console.error('Payment proof submission error:', error);
             toast({ title: "Error", description: error.message || "Could not confirm payment.", variant: "destructive" });
         }
     });
@@ -60,7 +63,7 @@ const ProofUpload = ({ ad, paymentMethod, onBack, onSuccess }: ProofUploadProps)
             <DialogHeader>
                 <DialogTitle className="text-white text-2xl">Upload Payment Proof</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                    Please upload a screenshot or receipt of your transaction for verification.
+                    Please upload a screenshot or receipt of your {paymentMethod === 'mpesa' ? 'M-Pesa' : 'crypto'} transaction for verification.
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
