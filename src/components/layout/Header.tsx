@@ -28,11 +28,13 @@ const Header = () => {
   return (
     <header className="bg-brand-gray-200 border-b border-brand-gray-400/40 sticky top-0 z-50">
       <div className="container mx-auto p-4 flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold text-white">
-          GaphyHive
-        </Link>
+        <div className="flex-1 flex justify-start">
+            <Link to="/" className="text-xl font-bold text-white">
+                GaphyHive
+            </Link>
+        </div>
 
-        <nav className="hidden md:flex items-center space-x-4">
+        <nav className="hidden md:flex items-center space-x-6 flex-1 justify-center">
           <Link to="/" className="text-gray-300 hover:text-white transition-colors flex items-center">
             <Home className="mr-2 h-4 w-4" />
             Home
@@ -45,64 +47,60 @@ const Header = () => {
             <Users className="mr-2 h-4 w-4" />
             Servers
           </Link>
-          {session ? (
-            <>
-              <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
+          {session && (
+            <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
                 <User className="mr-2 h-4 w-4" />
                 Profile
-              </Link>
-            </>
-          ) : (
-            <Link to="/auth" className="text-gray-300 hover:text-white transition-colors">
-              Sign In
             </Link>
           )}
         </nav>
 
-        {session ? (
-          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.username as string} />
-                  <AvatarFallback>{(user?.user_metadata?.username as string)?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 mr-2">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { navigate('/create-ad'); setIsMenuOpen(false); }}>
-                  <Gem className="mr-2 h-4 w-4" />
-                  <span>Create Ad</span>
-              </DropdownMenuItem>
-              {session?.user.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Admin</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Admin Panel</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <div className="hidden md:flex">
-            <Link to="/auth">
-              <Button>Sign In</Button>
-            </Link>
-          </div>
-        )}
+        <div className="flex-1 flex justify-end">
+            {session ? (
+            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.username as string} />
+                    <AvatarFallback>{(user?.user_metadata?.username as string)?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 mr-2">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { navigate('/create-ad'); setIsMenuOpen(false); }}>
+                    <Gem className="mr-2 h-4 w-4" />
+                    <span>Create Ad</span>
+                </DropdownMenuItem>
+                {session?.user.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
+                    <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Admin</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Admin Panel</span>
+                    </DropdownMenuItem>
+                    </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            ) : (
+            <div className="hidden md:flex">
+                <Link to="/auth">
+                <Button>Sign In</Button>
+                </Link>
+            </div>
+            )}
+        </div>
       </div>
     </header>
   );

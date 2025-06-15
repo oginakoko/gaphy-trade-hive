@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -92,7 +93,7 @@ const Servers = () => {
         <div className="flex justify-center">
           <div className="w-full max-w-4xl space-y-8">
             <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-white">Servers</h1>
+              <h1 className="text-3xl font-bold text-white">Gaphy Servers</h1>
               <Button
                 onClick={() => setShowCreateForm(true)}
                 className="bg-brand-green text-black hover:bg-brand-green/80"
