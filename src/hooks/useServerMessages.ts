@@ -20,7 +20,6 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
-  mentioned_users?: string[];
 }) => {
   const { data, error } = await supabase.functions.invoke('send-server-message', {
     body: { messageData },

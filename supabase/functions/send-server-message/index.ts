@@ -38,8 +38,7 @@ Deno.serve(async (req) => {
     }
     console.log('Request body parsed successfully.');
 
-    const { messageData } = body
-    const { server_id, user_id, content, media_url, media_type, mentioned_users } = messageData
+    const { server_id, user_id, content, media_url, media_type } = body.messageData
 
     // Create a Supabase client with the user's auth token
     const authHeader = req.headers.get('Authorization')
@@ -73,28 +72,7 @@ Deno.serve(async (req) => {
     }
     console.log('Message inserted successfully:', newMessage.id);
 
-    // 2. Create notifications if there are mentions
-    if (mentioned_users && mentioned_users.length > 0) {
-      console.log(`Creating notifications for ${mentioned_users.length} mentioned users.`);
-      const notifications = mentioned_users.map((mentionedId: string) => ({
-        recipient_id: mentionedId,
-        sender_id: user_id,
-        type: 'mention' as const,
-        reference_id: server_id, // Using server_id which is a UUID
-        server_id: server_id,
-      }))
-
-      const { error: notificationError } = await supabaseClient
-        .from('notifications')
-        .insert(notifications)
-      
-      if (notificationError) {
-        // Log the error but don't fail the whole request as the message was sent.
-        console.error('Failed to create notifications:', notificationError.message)
-      } else {
-        console.log('Notifications created successfully.');
-      }
-    }
+    // 2. Notification logic removed to simplify and debug.
 
     console.log('Returning successful response for message ID:', newMessage.id);
     return new Response(JSON.stringify({ data: newMessage }), {
@@ -118,3 +96,4 @@ Deno.serve(async (req) => {
     })
   }
 })
+

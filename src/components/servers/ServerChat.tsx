@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server } from '@/types/server';
@@ -85,36 +84,11 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       }
     }
 
-    const mentioned_users = new Set<string>();
-
-    if (/@everyone/.test(message)) {
-      console.log('Mentioning @everyone');
-      members.forEach(member => {
-        if (member.user_id !== user?.id) {
-          mentioned_users.add(member.user_id);
-        }
-      });
-    } else {
-      const mentionRegex = /@(\w+)/g;
-      let match;
-      while ((match = mentionRegex.exec(message)) !== null) {
-        const username = match[1];
-        const mentionedUser = members.find(m => m.profiles?.username === username);
-        if (mentionedUser && mentionedUser.user_id !== user?.id) {
-          mentioned_users.add(mentionedUser.user_id);
-        }
-      }
-    }
-
-    const validMentionedUsers = Array.from(mentioned_users);
-    console.log('Final list of mentioned user IDs to notify:', validMentionedUsers);
-
     sendMessage({
       server_id: server.id,
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
-      mentioned_users: validMentionedUsers,
     }, {
       onError: (error: any) => {
         toast({
