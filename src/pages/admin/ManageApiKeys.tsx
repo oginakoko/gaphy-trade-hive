@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -90,15 +89,12 @@ CREATE TABLE public.app_config (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- 2. Create a helper function to check if a user is an admin
--- This assumes you have a 'profiles' table with a 'role' column.
+-- 2. Create a helper function to check if the current user is the admin.
+-- This uses a hardcoded admin User ID to match the application's logic.
+-- This ID ('73938002-b3f8-4444-ad32-6a46cbf8e075') is also used in the app's protected routes.
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
-  );
+  SELECT auth.uid() = '73938002-b3f8-4444-ad32-6a46cbf8e075';
 $$ LANGUAGE sql SECURITY DEFINER;
 
 -- 3. Enable Row Level Security
