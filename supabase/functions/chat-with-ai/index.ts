@@ -14,8 +14,11 @@ const mergeConsecutiveMessages = (messages: GeminiMessage[]): GeminiMessage[] =>
     return []
   }
   const merged: GeminiMessage[] = []
-  // Use structuredClone for a deep copy to avoid modifying nested objects/arrays
-  let lastMessage = structuredClone(messages[0])
+  // Manual deep copy to avoid potential structuredClone issues in Deno runtime
+  let lastMessage: GeminiMessage = {
+    role: messages[0].role,
+    parts: [{ text: messages[0].parts[0].text }],
+  }
 
   for (let i = 1; i < messages.length; i++) {
     const currentMessage = messages[i]
@@ -24,7 +27,11 @@ const mergeConsecutiveMessages = (messages: GeminiMessage[]): GeminiMessage[] =>
       lastMessage.parts[0].text += `\n${currentMessage.parts[0].text}`
     } else {
       merged.push(lastMessage)
-      lastMessage = structuredClone(currentMessage)
+      // Manual deep copy for the new message
+      lastMessage = {
+        role: currentMessage.role,
+        parts: [{ text: currentMessage.parts[0].text }],
+      }
     }
   }
   merged.push(lastMessage)
