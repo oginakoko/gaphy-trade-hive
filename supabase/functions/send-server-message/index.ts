@@ -1,3 +1,4 @@
+
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
 
@@ -19,11 +20,26 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { messageData } = await req.json()
+    const body = await req.json()
+    if (!body || !body.messageData) {
+      return new Response(JSON.stringify({ error: 'Invalid request body, messageData is missing.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    const { messageData } = body
     const { server_id, user_id, content, media_url, media_type, mentioned_users } = messageData
 
     // Create a Supabase client with the user's auth token
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      })
+    }
+
     const supabaseClient = createClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -65,6 +81,7 @@ Deno.serve(async (req) => {
       status: 200,
     })
   } catch (error) {
+    console.error('Error in send-server-message function:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
