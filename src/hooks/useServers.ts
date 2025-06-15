@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,7 +25,7 @@ const fetchUserServers = async (userId: string): Promise<Server[]> => {
   if (error) throw new Error(error.message);
   if (!data) return [];
 
-  const servers = data.map(item => item.servers).filter(Boolean);
+  const servers = data.map(item => item.servers).filter(Boolean).flat();
 
   return servers as Server[];
 };
