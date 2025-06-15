@@ -12,8 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Gem, Home, Lightbulb, LogOut, Settings, User, Users } from 'lucide-react';
+import { ChevronDown, Gem, Home, Lightbulb, LogOut, Menu, Settings, User, Users } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,6 +27,7 @@ const Header = () => {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -29,7 +35,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-brand-gray-200 border-b border-brand-gray-400/40 sticky top-0 z-50">
+    <header className="bg-[#0D0D0D] border-b border-white/10 sticky top-0 z-50">
       <div className="container mx-auto p-4 flex items-center justify-between">
         <div className="flex-1 flex justify-start">
             <Link to="/" className="text-xl font-bold text-white">
@@ -58,7 +64,7 @@ const Header = () => {
           )}
         </nav>
 
-        <div className="flex-1 flex justify-end">
+        <div className="flex-1 flex justify-end items-center gap-4">
             {session ? (
               isLoadingProfile ? (
                  <div className="flex items-center gap-2">
@@ -116,6 +122,42 @@ const Header = () => {
                 </Link>
             </div>
             )}
+            <div className="md:hidden">
+              <Drawer open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <DrawerTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-6 w-6 text-white" />
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="bg-[#0D0D0D] border-t-brand-gray-300 p-4">
+                  <nav className="flex flex-col space-y-4">
+                      <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white transition-colors flex items-center">
+                          <Home className="mr-3 h-5 w-5" />
+                          Home
+                      </Link>
+                      <Link to="/analysis" onClick={() => setIsMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white transition-colors flex items-center">
+                          <Lightbulb className="mr-3 h-5 w-5" />
+                          Analysis
+                      </Link>
+                      <Link to="/servers" onClick={() => setIsMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white transition-colors flex items-center">
+                          <Users className="mr-3 h-5 w-5" />
+                          Servers
+                      </Link>
+                      {session && (
+                          <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white transition-colors flex items-center">
+                              <User className="mr-3 h-5 w-5" />
+                              Profile
+                          </Link>
+                      )}
+                      {!session && (
+                          <Link to="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                            <Button className="w-full mt-4">Sign In</Button>
+                          </Link>
+                      )}
+                  </nav>
+                </DrawerContent>
+              </Drawer>
+            </div>
         </div>
       </div>
     </header>

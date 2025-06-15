@@ -132,7 +132,7 @@ export const useAnalysisFeed = () => {
         
         const combinedFeed: FeedItem[] = [...ideas];
         let contentIndex = 0;
-        const contentInterval = 4;
+        const contentInterval = 5;
     
         for (let i = contentInterval; i < combinedFeed.length; i += (contentInterval + 1)) {
             if (contentIndex < allContent.length) {
