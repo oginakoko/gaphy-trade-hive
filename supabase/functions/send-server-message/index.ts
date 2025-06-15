@@ -102,10 +102,19 @@ Deno.serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    console.error(`[ERROR] in send-server-message: ${error.message}`, { error });
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error(`[ERROR] in send-server-message:`, error);
+    let message = 'An unknown error occurred. Please check the function logs for more details.';
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+      message = String((error as { message: string }).message);
+    } else if (typeof error === 'string') {
+      message = error;
+    }
+
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500,
     })
   }
 })

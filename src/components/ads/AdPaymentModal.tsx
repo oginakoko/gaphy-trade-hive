@@ -4,13 +4,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Ad } from '@/types';
 import { donationWallets, mpesaDetails } from '@/data/mockData';
-import { Copy, Check, Loader2 } from 'lucide-react';
+import { Copy, Check, Loader2, X, Bitcoin } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { QRCodeCanvas as QRCode } from 'qrcode.react';
+import { cn } from '@/lib/utils';
 
 interface AdPaymentModalProps {
   ad: Ad | null;
@@ -18,9 +20,12 @@ interface AdPaymentModalProps {
   onClose: () => void;
 }
 
+type Wallet = typeof donationWallets[0];
+
 const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
   const [copiedAddress, setCopiedAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -43,7 +48,7 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
     onSuccess: () => {
         toast({ title: "Payment Confirmed", description: "Your ad has been submitted for approval." });
         queryClient.invalidateQueries({ queryKey: ['ads'] });
-        onClose();
+        handleClose();
         navigate('/');
     },
     onError: (error: any) => {
@@ -78,24 +83,33 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
     }
   });
 
+  const handleClose = () => {
+    stkPushMutation.reset();
+    updateStatusMutation.reset();
+    setSelectedWallet(null);
+    onClose();
+  };
+
   if (!ad) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] glass-card border-brand-green/20">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md glass-card border-brand-green/20">
         <DialogHeader>
           <DialogTitle className="text-white text-2xl">Complete Ad Payment</DialogTitle>
           <DialogDescription className="text-gray-400">
             To activate your ad "{ad.title}", please send a payment of ${ad.cost?.toFixed(2)}.
-            Once paid via Crypto, click the confirmation button below. For M-Pesa, use the STK push.
           </DialogDescription>
         </DialogHeader>
+        <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+          <X size={24} />
+        </button>
         
         <div className="py-4 space-y-6">
           <div>
             <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa (STK Push)</h3>
             <div className="bg-brand-gray-200/50 p-4 rounded-lg space-y-3">
-                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">${ad.cost?.toFixed(2)}</span> to Paybill <span className="font-bold text-white">{mpesaDetails.paybill}</span></p>
+                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">KSH {(ad.cost * 125).toFixed(2)}</span> to Paybill <span className="font-bold text-white">{mpesaDetails.paybill}</span></p>
                 <Input 
                     type="tel"
                     placeholder="254xxxxxxxxx"
@@ -114,27 +128,51 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
             </div>
           </div>
           
-          <div>
+          <div className="mt-6">
             <h3 className="text-lg font-semibold text-brand-green mb-3">Crypto Payments</h3>
-            <div className="space-y-2">
+             <p className="text-gray-400 text-sm mb-4 text-center">Select a currency to see the deposit address.</p>
+            <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap mb-4">
               {donationWallets.map((wallet) => (
-                <div key={wallet.name} className="bg-brand-gray-200/50 p-3 rounded-lg">
-                  <p className="text-sm font-medium text-gray-300">{wallet.name}</p>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className="text-xs text-brand-green break-all">{wallet.address}</p>
-                    <button onClick={() => handleCopy(wallet.address)} className="text-gray-400 hover:text-white flex-shrink-0">
-                      {copiedAddress === wallet.address ? <Check size={16} className="text-brand-green" /> : <Copy size={16} />}
+                <button
+                  key={wallet.name}
+                  onClick={() => setSelectedWallet(wallet === selectedWallet ? null : wallet)}
+                  className={cn(
+                    "h-14 w-14 sm:h-16 sm:w-16 rounded-full flex items-center justify-center transition-all duration-300 font-bold",
+                    selectedWallet?.name === wallet.name
+                      ? 'bg-brand-green text-black scale-110'
+                      : 'bg-brand-gray-200/50 text-white hover:bg-brand-gray-200/80'
+                  )}
+                  title={wallet.name}
+                >
+                  {wallet.name === 'BTC' ? <Bitcoin size={28} /> : wallet.name.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+
+            {selectedWallet && (
+              <div className="bg-brand-gray-200/50 p-4 rounded-lg text-center animate-fade-in">
+                 <div className="flex justify-center mb-3">
+                    <div className="p-2 bg-white rounded-lg">
+                        <QRCode value={selectedWallet.address} size={128} bgColor="#FFFFFF" fgColor="#000000" />
+                    </div>
+                </div>
+                <div className="relative bg-brand-gray-100/50 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-gray-300 mb-1">{selectedWallet.name} Address</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-brand-green break-all pr-8">{selectedWallet.address}</p>
+                    <button onClick={() => handleCopy(selectedWallet.address)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white flex-shrink-0">
+                      {copiedAddress === selectedWallet.address ? <Check size={16} className="text-brand-green" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
         <DialogFooter>
           <div className="w-full space-y-2">
-            <p className="text-center text-xs text-gray-400">For crypto payments only:</p>
+            <p className="text-center text-xs text-gray-400">For crypto payments only: After paying, click below.</p>
             <Button 
               onClick={() => updateStatusMutation.mutate()} 
               disabled={updateStatusMutation.isPending}
