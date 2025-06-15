@@ -1,4 +1,3 @@
-
 import { Ad } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpRight } from 'lucide-react';
@@ -13,9 +12,10 @@ const AdCard = ({ ad }: AdCardProps) => {
 
   return (
     <div className="group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10">
-      {ad.image_url && 
-        <a href={ad.link_url} target="_blank" rel="noopener noreferrer" className="block">
-          <img src={ad.image_url} alt={ad.title} className="w-full h-40 object-cover" />
+      {ad.media_url &&
+        <a href={ad.link_url} target="_blank" rel="noopener noreferrer" className="block w-full h-40 bg-brand-gray-300">
+          {ad.media_type === 'image' && <img src={ad.media_url} alt={ad.title} className="w-full h-full object-cover" />}
+          {ad.media_type === 'video' && <video src={ad.media_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />}
         </a>
       }
       <div className="p-3 flex flex-col flex-grow">

@@ -86,8 +86,9 @@ export const useAnalysisFeed = () => {
             user_id: 'system-affiliate',
             title: link.title,
             content: link.description,
-            image_url: null,
             link_url: link.url,
+            media_url: null,
+            media_type: null,
             status: 'approved',
             created_at: new Date().toISOString(),
             profiles: {
