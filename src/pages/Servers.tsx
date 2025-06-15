@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -22,6 +21,22 @@ const Servers = () => {
     joinServer, 
     isJoining 
   } = useServers();
+
+  useEffect(() => {
+    if (selectedServer) {
+      const serverFromList = userServers.find(s => s.id === selectedServer.id);
+      if (serverFromList) {
+        // If server data in the main list is updated (e.g., member count, name),
+        // update the selectedServer state to match.
+        if (JSON.stringify(serverFromList) !== JSON.stringify(selectedServer)) {
+            setSelectedServer(serverFromList);
+        }
+      } else {
+        // If server is no longer in the list (e.g., deleted), go back.
+        setSelectedServer(null);
+      }
+    }
+  }, [userServers, selectedServer]);
 
   const handleJoinServer = (serverId: string) => {
     joinServer({ serverId });

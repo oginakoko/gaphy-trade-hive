@@ -67,6 +67,34 @@ const joinServer = async (serverId: string, userId: string) => {
   if (error) throw new Error(error.message);
 };
 
+const updateServer = async (serverData: {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string | null;
+  is_public: boolean;
+}) => {
+  const { id, ...updateData } = serverData;
+  const { data, error } = await supabase
+    .from('servers')
+    .update(updateData)
+    .eq('id', id)
+    .select('*, profiles!owner_id(username, avatar_url)')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Server;
+};
+
+const deleteServer = async (serverId: string) => {
+  // This currently only deletes the server record. For a production app,
+  // you should set up database cascades or an edge function to also delete
+  // related members, messages, and files in storage.
+  const { error } = await supabase.from('servers').delete().eq('id', serverId);
+
+  if (error) throw new Error(error.message);
+};
+
 export const useServers = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -98,13 +126,33 @@ export const useServers = () => {
     },
   });
 
+  const updateServerMutation = useMutation({
+    mutationFn: updateServer,
+    onSuccess: (updatedServer) => {
+      queryClient.invalidateQueries({ queryKey: ['publicServers'] });
+      queryClient.invalidateQueries({ queryKey: ['userServers', user?.id] });
+    },
+  });
+
+  const deleteServerMutation = useMutation({
+    mutationFn: deleteServer,
+    onSuccess: (_, serverId) => {
+      queryClient.invalidateQueries({ queryKey: ['publicServers'] });
+      queryClient.invalidateQueries({ queryKey: ['userServers', user?.id] });
+    },
+  });
+
   return {
     publicServers: publicServers || [],
     userServers: userServers || [],
     isLoading: isLoadingPublic || isLoadingUser,
     createServer: createServerMutation.mutate,
     joinServer: joinServerMutation.mutate,
+    updateServer: updateServerMutation.mutate,
+    deleteServer: deleteServerMutation.mutate,
     isCreating: createServerMutation.isPending,
     isJoining: joinServerMutation.isPending,
+    isUpdating: updateServerMutation.isPending,
+    isDeleting: deleteServerMutation.isPending,
   };
 };
