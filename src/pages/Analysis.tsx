@@ -19,7 +19,7 @@ const Analysis = () => {
       <Header />
       <main className="py-8 container mx-auto px-4">
         <div className="grid lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2">
                 <Feed 
                     feed={feed}
                     isLoading={isLoading}

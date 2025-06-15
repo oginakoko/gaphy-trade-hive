@@ -7,7 +7,7 @@ import { Server, ServerMember } from '@/types/server';
 const fetchPublicServers = async (): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('servers')
-    .select('*, profiles!owner_id(username, avatar_url)')
+    .select('*, member_count, profiles!owner_id(username, avatar_url)')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
@@ -19,7 +19,7 @@ const fetchPublicServers = async (): Promise<Server[]> => {
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('server_members')
-    .select('servers!inner(*, profiles!owner_id(username, avatar_url))')
+    .select('servers!inner(*, member_count, profiles!owner_id(username, avatar_url))')
     .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
@@ -103,7 +103,7 @@ const updateServer = async (serverData: {
     .from('servers')
     .update(updateData)
     .eq('id', id)
-    .select('*, profiles!owner_id(username, avatar_url)')
+    .select('*, member_count, profiles!owner_id(username, avatar_url)')
     .single();
 
   if (error) throw new Error(error.message);
