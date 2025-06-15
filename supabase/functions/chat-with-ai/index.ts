@@ -13,86 +13,109 @@ const mergeConsecutiveMessages = (messages: GeminiMessage[]): GeminiMessage[] =>
   if (!messages.length) {
     return []
   }
+  
   const merged: GeminiMessage[] = []
-  // Manual deep copy to avoid potential structuredClone issues in Deno runtime
-  let lastMessage: GeminiMessage = {
+  let currentMessage: GeminiMessage = {
     role: messages[0].role,
     parts: [{ text: messages[0].parts[0].text }],
   }
 
   for (let i = 1; i < messages.length; i++) {
-    const currentMessage = messages[i]
-    if (currentMessage.role === lastMessage.role) {
+    const message = messages[i]
+    if (message.role === currentMessage.role) {
       // Merge text of consecutive messages from the same role
-      lastMessage.parts[0].text += `\n${currentMessage.parts[0].text}`
+      currentMessage.parts[0].text += `\n${message.parts[0].text}`
     } else {
-      merged.push(lastMessage)
-      // Manual deep copy for the new message
-      lastMessage = {
-        role: currentMessage.role,
-        parts: [{ text: currentMessage.parts[0].text }],
+      merged.push(currentMessage)
+      currentMessage = {
+        role: message.role,
+        parts: [{ text: message.parts[0].text }],
       }
     }
   }
-  merged.push(lastMessage)
+  merged.push(currentMessage)
   return merged
 }
 
 Deno.serve(async (req) => {
-  console.log('Edge Function called with method:', req.method)
+  console.log('=== Edge Function Start ===')
+  console.log('Method:', req.method)
+  console.log('URL:', req.url)
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request')
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('Parsing request body...')
-    const { messages } = await req.json()
-
-    if (!messages) {
-      console.error('No messages provided in request')
-      throw new Error('No messages provided.')
+    console.log('Reading request body...')
+    let requestBody
+    try {
+      requestBody = await req.json()
+    } catch (e) {
+      console.error('Failed to parse JSON:', e)
+      throw new Error('Invalid JSON in request body')
     }
 
-    console.log('Messages received:', messages.length)
+    const { messages } = requestBody
+    console.log('Request body parsed successfully')
 
-    // Create a Supabase client with SERVICE_ROLE_KEY to bypass RLS
+    if (!messages || !Array.isArray(messages)) {
+      console.error('Invalid messages:', messages)
+      throw new Error('Messages must be an array')
+    }
+
+    console.log('Messages count:', messages.length)
+
+    // Check environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
+    console.log('Environment check:')
+    console.log('- SUPABASE_URL exists:', !!supabaseUrl)
+    console.log('- SERVICE_ROLE_KEY exists:', !!supabaseServiceKey)
+    
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase environment variables')
-      throw new Error('Supabase configuration is missing')
+      console.error('Missing required environment variables')
+      throw new Error('Server configuration error: Missing environment variables')
     }
 
+    // Create Supabase client
+    console.log('Creating Supabase client...')
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get the Gemini API key from the app_config table
-    console.log('Fetching Gemini API key...')
+    // Get the Gemini API key
+    console.log('Fetching API key from database...')
     const { data: apiKeyData, error: apiKeyError } = await serviceClient
       .from('app_config')
       .select('value')
       .eq('key', GEMINI_API_KEY_ID)
       .single()
 
-    if (apiKeyError || !apiKeyData?.value) {
-      console.error('API Key fetch error:', apiKeyError)
-      throw new Error('The Gemini API key is not configured in the application settings.')
+    if (apiKeyError) {
+      console.error('Database error:', apiKeyError)
+      throw new Error('Failed to fetch API configuration')
+    }
+
+    if (!apiKeyData?.value) {
+      console.error('API key not found in database')
+      throw new Error('AI service is not configured. Please contact support.')
     }
 
     const geminiApiKey = apiKeyData.value
-    console.log('Gemini API key retrieved successfully')
+    console.log('API key retrieved successfully')
 
+    // Prepare Gemini API request
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`
 
-    // Format messages for the Gemini API
+    // Format messages for Gemini
     const geminiMessages: GeminiMessage[] = messages.map((msg: { sender: string; text: string }) => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.text }],
     }))
 
-    // Add a system prompt to give the AI its persona
+    // Add system prompt
     const initialContents = [
       {
         role: 'user',
@@ -100,41 +123,53 @@ Deno.serve(async (req) => {
       },
       {
         role: 'model',
-        parts: [{text: "Understood. I'm ready to assist."}]
+        parts: [{text: "Understood. I'm ready to assist with trading analysis and insights."}]
       },
       ...geminiMessages,
     ]
     
     const contents = mergeConsecutiveMessages(initialContents)
-    console.log('Prepared contents for Gemini API, message count:', contents.length)
+    console.log('Prepared', contents.length, 'messages for Gemini')
 
-    // Call the Gemini API
-    console.log('Calling Gemini API...')
-    const res = await fetch(geminiUrl, {
+    // Call Gemini API
+    console.log('Making request to Gemini API...')
+    const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ contents }),
     })
 
-    if (!res.ok) {
-      const errorBody = await res.text()
-      console.error('Gemini API error:', errorBody)
-      throw new Error(`Gemini API request failed with status ${res.status}: ${errorBody}`)
+    console.log('Gemini API response status:', geminiResponse.status)
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text()
+      console.error('Gemini API error response:', errorText)
+      throw new Error(`AI service returned error: ${geminiResponse.status}`)
     }
 
-    const geminiData = await res.json()
-    console.log('Gemini API response received')
+    const geminiData = await geminiResponse.json()
+    console.log('Gemini API response received successfully')
     
-    const botResponseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that. Please try rephrasing."
+    const botResponseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that. Please try rephrasing your question."
 
-    console.log('Returning successful response')
+    console.log('Sending successful response')
     return new Response(JSON.stringify({ reply: botResponseText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
+
   } catch (error) {
-    console.error('Edge Function error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('=== Edge Function Error ===')
+    console.error('Error type:', error.constructor.name)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Internal server error',
+      type: 'server_error'
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })
