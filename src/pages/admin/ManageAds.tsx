@@ -14,14 +14,14 @@ import { Ad } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const fetchAds = async (): Promise<Ad[]> => {
     const { data, error } = await supabase
         .from('ads')
-        .select('*, profiles(username)')
+        .select('*, profiles(username), payment_proof_url, payment_method')
         .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -97,7 +97,7 @@ const ManageAdsPage = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {ads.map((ad) => (
+                                {ads.map((ad: any) => (
                                     <TableRow key={ad.id} className="border-b-brand-gray-200/20 hover:bg-brand-gray-200/10">
                                         <TableCell className="font-medium text-white">{ad.title}</TableCell>
                                         <TableCell className="text-gray-400">{ad.profiles?.username || 'N/A'}</TableCell>
@@ -106,6 +106,7 @@ const ManageAdsPage = () => {
                                                 ad.status === 'approved' ? 'default' :
                                                 ad.status === 'rejected' ? 'destructive' :
                                                 ad.status === 'pending_approval' ? 'secondary' :
+                                                ad.status === 'pending_payment' ? 'outline' :
                                                 'outline' // for pending_payment
                                             } className={cn({
                                                 'bg-green-600 text-white': ad.status === 'approved',
@@ -115,13 +116,14 @@ const ManageAdsPage = () => {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {ad.status === 'pending_payment' && (
-                                                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(ad.id, 'pending_approval')} disabled={updateStatusMutation.isPending}>
-                                                    Confirm Payment
-                                                </Button>
-                                            )}
                                             {ad.status === 'pending_approval' && (
-                                                <div className="flex gap-2 justify-end">
+                                                <div className="flex gap-2 justify-end items-center">
+                                                     {ad.payment_proof_url && (
+                                                        <Button variant="outline" size="sm" onClick={() => window.open(ad.payment_proof_url, '_blank')}>
+                                                            <Eye size={16} className="mr-2" />
+                                                            View Proof
+                                                        </Button>
+                                                    )}
                                                     <Button variant="ghost" size="sm" className="text-green-500 hover:text-green-400" onClick={() => handleUpdateStatus(ad.id, 'approved')} disabled={updateStatusMutation.isPending}>
                                                         <CheckCircle size={16} />
                                                         Approve

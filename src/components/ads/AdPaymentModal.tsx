@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Ad } from '@/types';
 import { donationWallets, mpesaDetails } from '@/data/mockData';
-import { Copy, Check, Loader2, X, Bitcoin } from 'lucide-react';
+import { Copy, Check, Loader2, X, Bitcoin, ArrowLeft } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -12,6 +13,7 @@ import { Input } from '../ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { QRCodeCanvas as QRCode } from 'qrcode.react';
 import { cn } from '@/lib/utils';
+import ImageUploader from '../shared/ImageUploader';
 
 interface AdPaymentModalProps {
   ad: Ad | null;
@@ -25,6 +27,8 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
   const [copiedAddress, setCopiedAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'mpesa' | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -35,31 +39,36 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
     setTimeout(() => setCopiedAddress(''), 2000);
   };
   
-  const updateStatusMutation = useMutation({
+  const confirmPaymentWithProofMutation = useMutation({
     mutationFn: async () => {
         if (!ad) throw new Error("Ad not found.");
         if (!user) throw new Error("User not authenticated.");
+        if (!paymentProofUrl) throw new Error("Please upload payment proof.");
+        if (!paymentMethod) throw new Error("Payment method not selected.");
 
-        // Update ad status directly, relying on RLS for security
         const { data, error } = await supabase
             .from('ads')
-            .update({ status: 'pending_approval' })
+            .update({ 
+                status: 'pending_approval',
+                payment_proof_url: paymentProofUrl,
+                payment_method: paymentMethod
+            })
             .eq('id', ad.id);
 
         if (error) {
-            console.error("Error confirming crypto payment:", error);
+            console.error("Error confirming payment with proof:", error);
             throw error;
         }
         return data;
     },
     onSuccess: () => {
-        toast({ title: "Payment Confirmed", description: "Your ad has been submitted for approval." });
+        toast({ title: "Submission successful!", description: "Your ad has been submitted for approval." });
         queryClient.invalidateQueries({ queryKey: ['ads'] });
         handleClose();
         navigate('/');
     },
     onError: (error: any) => {
-        console.error("Crypto payment confirmation error:", error); // Added for more detailed logging
+        console.error("Payment confirmation error:", error);
         toast({ title: "Error", description: error.message || "Could not confirm payment.", variant: "destructive" });
     }
   });
@@ -93,16 +102,48 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
 
   const handleClose = () => {
     stkPushMutation.reset();
-    updateStatusMutation.reset();
+    confirmPaymentWithProofMutation.reset();
     setSelectedWallet(null);
+    setPaymentMethod(null);
+    setPaymentProofUrl(null);
     onClose();
   };
 
   if (!ad) return null;
+  
+  const renderProofUpload = () => (
+    <div className="animate-fade-in">
+        <Button variant="ghost" size="sm" onClick={() => setPaymentMethod(null)} className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to payment methods
+        </Button>
+        <DialogHeader>
+          <DialogTitle className="text-white text-2xl">Upload Payment Proof</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Please upload a screenshot or receipt of your transaction for verification.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+             <ImageUploader 
+                value={paymentProofUrl || ''}
+                onChange={setPaymentProofUrl}
+                bucketName="ad-payment-proofs"
+             />
+        </div>
+        <DialogFooter>
+             <Button 
+              onClick={() => confirmPaymentWithProofMutation.mutate()} 
+              disabled={!paymentProofUrl || confirmPaymentWithProofMutation.isPending}
+              className="w-full"
+            >
+              {confirmPaymentWithProofMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Submit for Approval
+            </Button>
+        </DialogFooter>
+    </div>
+  );
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md glass-card border-brand-green/20">
+  const renderPaymentOptions = () => (
+    <>
         <DialogHeader>
           <DialogTitle className="text-white text-2xl">Complete Ad Payment</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -115,24 +156,33 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
         
         <div className="py-4 space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa (STK Push)</h3>
+            <h3 className="text-lg font-semibold text-brand-green mb-3">M-Pesa</h3>
             <div className="bg-brand-gray-200/50 p-4 rounded-lg space-y-3">
-                <p className="text-center text-gray-300">Pay <span className="font-bold text-white">KSH {(ad.cost * 125).toFixed(2)}</span> to Paybill <span className="font-bold text-white">{mpesaDetails.paybill}</span></p>
-                <Input 
-                    type="tel"
-                    placeholder="254xxxxxxxxx"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="bg-brand-gray-100/50 border-brand-green/30"
-                />
+                <p className="text-sm text-center text-gray-300">Pay <span className="font-bold text-white">KSH {(ad.cost * 125).toFixed(2)}</span> to Paybill <span className="font-bold text-white">{mpesaDetails.paybill}</span>, Account: <span className="font-bold text-white">{mpesaDetails.account}</span></p>
+                <p className="text-center text-xs text-gray-400 mt-2">For automatic payment, use STK push:</p>
+                <div className="flex gap-2">
+                    <Input 
+                        type="tel"
+                        placeholder="254xxxxxxxxx"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="bg-brand-gray-100/50 border-brand-green/30"
+                    />
+                     <Button 
+                        onClick={() => stkPushMutation.mutate()} 
+                        disabled={stkPushMutation.isPending}
+                        className="bg-brand-green text-black font-bold hover:bg-brand-green/80 flex-shrink-0"
+                      >
+                        {stkPushMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'STK Push'}
+                      </Button>
+                </div>
                  <Button 
-                    onClick={() => stkPushMutation.mutate()} 
-                    disabled={stkPushMutation.isPending}
-                    className="w-full bg-brand-green text-black font-bold hover:bg-brand-green/80"
-                  >
-                    {stkPushMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Pay with M-Pesa
-                  </Button>
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setPaymentMethod('mpesa')}
+                 >
+                    Paid Manually? Upload Proof
+                 </Button>
             </div>
           </div>
           
@@ -180,18 +230,24 @@ const AdPaymentModal = ({ ad, isOpen, onClose }: AdPaymentModalProps) => {
 
         <DialogFooter>
           <div className="w-full space-y-2">
-            <p className="text-center text-xs text-gray-400">For crypto payments only: After paying, click below.</p>
+            <p className="text-center text-xs text-gray-400">For crypto payments: After paying, click below to upload proof.</p>
             <Button 
-              onClick={() => updateStatusMutation.mutate()} 
-              disabled={updateStatusMutation.isPending}
+              onClick={() => setPaymentMethod('crypto')} 
               className="w-full"
               variant="outline"
+              disabled={!selectedWallet}
             >
-              {updateStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               I Have Paid (Crypto)
             </Button>
           </div>
         </DialogFooter>
+    </>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md glass-card border-brand-green/20">
+        {paymentMethod ? renderProofUpload() : renderPaymentOptions()}
       </DialogContent>
     </Dialog>
   );
