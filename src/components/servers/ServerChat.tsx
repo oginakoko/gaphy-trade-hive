@@ -85,23 +85,35 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       }
     }
 
-    const mentionRegex = /@(\w+)/g;
     const mentioned_users = new Set<string>();
-    let match;
-    while ((match = mentionRegex.exec(message)) !== null) {
-      const username = match[1];
-      const mentionedUser = members.find(m => m.profiles?.username === username);
-      if (mentionedUser && mentionedUser.user_id !== user?.id) {
-        mentioned_users.add(mentionedUser.user_id);
+
+    if (/@everyone/.test(message)) {
+      members.forEach(member => {
+        if (member.user_id !== user?.id) {
+          mentioned_users.add(member.user_id);
+        }
+      });
+    } else {
+      const mentionRegex = /@(\w+)/g;
+      let match;
+      while ((match = mentionRegex.exec(message)) !== null) {
+        const username = match[1];
+        const mentionedUser = members.find(m => m.profiles?.username === username);
+        if (mentionedUser && mentionedUser.user_id !== user?.id) {
+          mentioned_users.add(mentionedUser.user_id);
+        }
       }
     }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const validMentionedUsers = Array.from(mentioned_users).filter(id => uuidRegex.test(id));
 
     sendMessage({
       server_id: server.id,
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
-      mentioned_users: Array.from(mentioned_users),
+      mentioned_users: validMentionedUsers,
     });
   };
 
