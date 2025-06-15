@@ -1,12 +1,7 @@
-
-import { socialLinks } from '@/data/mockData';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import { Button } from '@/components/ui/button';
-import { LogOut, Cog, Shield, User as UserIcon } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { Profile } from '@/types';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,102 +9,99 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from '@/components/ui/button';
+import { Gem, GraduationCap, Home, Lightbulb, Lock, LogOut, Settings, User, Users } from 'lucide-react';
 
 const Header = () => {
   const { session, user } = useAuth();
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('username, avatar_url')
-        .eq('id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-      }
-      return data as Pick<Profile, 'username' | 'avatar_url'> | null;
-    },
-    enabled: !!user,
-  });
-
-  const handleLogout = async () => {
+  const signOut = async () => {
     await supabase.auth.signOut();
-    navigate('/');
+    navigate('/auth');
   };
-  
-  const getInitials = (name?: string | null) => {
-    return name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : <UserIcon size={18} />;
-  }
 
   return (
-    <header className="py-4">
-      <div className="flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-3">
-          <img src="/logo.svg" alt="GaphyHive Logo" className="h-10 w-10" />
-          <h1 className="text-2xl font-bold text-white tracking-wider">GaphyHive</h1>
+    <header className="bg-brand-gray-200 border-b border-brand-gray-400/40 sticky top-0 z-50">
+      <div className="container mx-auto p-4 flex items-center justify-between">
+        <Link to="/" className="text-xl font-bold text-white">
+          Gaphy.AI
         </Link>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4">
-            {socialLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-brand-green transition-colors"
-              >
-                <link.icon size={20} />
-              </a>
-            ))}
-          </div>
+
+        <nav className="hidden md:flex items-center space-x-4">
+          <Link to="/" className="text-gray-300 hover:text-white transition-colors flex items-center">
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Link>
+          <Link to="/analysis" className="text-gray-300 hover:text-white transition-colors flex items-center">
+            <Lightbulb className="mr-2 h-4 w-4" />
+            Analysis
+          </Link>
+          <Link to="/servers" className="text-gray-300 hover:text-white transition-colors flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Servers
+          </Link>
           {session ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 px-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback>{getInitials(profile?.username)}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline font-medium">{profile?.username || 'Account'}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
-                    <Cog className="mr-2 h-4 w-4" />
-                    <span>Profile Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-                {user?.id === '73938002-b3f8-4444-ad32-6a46cbf8e075' && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin" className="cursor-pointer">
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin Panel</span>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
+            </>
           ) : (
-            <Link to="/auth" className="text-gray-300 hover:text-white font-medium transition-colors text-sm">
-              Login
+            <Link to="/auth" className="text-gray-300 hover:text-white transition-colors">
+              Sign In
             </Link>
           )}
-        </div>
+        </nav>
+
+        {session ? (
+          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.username as string} />
+                  <AvatarFallback>{(user?.user_metadata?.username as string)?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 mr-2">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { navigate('/create-ad'); setIsMenuOpen(false); }}>
+                  <Gem className="mr-2 h-4 w-4" />
+                  <span>Create Ad</span>
+              </DropdownMenuItem>
+              {session?.user.id === 'e95c934a-449c-4169-8995-98c4ef49994c' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Admin</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin Panel</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="hidden md:flex">
+            <Link to="/auth">
+              <Button>Sign In</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   );

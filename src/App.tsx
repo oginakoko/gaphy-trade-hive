@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +22,7 @@ import Analysis from "./pages/Analysis";
 import AuthGuard from "./components/auth/AuthGuard";
 import GuestGuard from "./components/auth/GuestGuard";
 import ManageApiKeys from "./pages/admin/ManageApiKeys";
+import Servers from "./pages/Servers";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +44,7 @@ const App = () => (
               {/* Routes for authenticated (non-admin) users */}
               <Route element={<AuthGuard />}>
                 <Route path="/analysis" element={<Analysis />} />
+                <Route path="/servers" element={<Servers />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/create-ad" element={<CreateAd />} />
               </Route>

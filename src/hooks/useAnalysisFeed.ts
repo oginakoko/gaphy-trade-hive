@@ -1,8 +1,7 @@
-
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { TradeIdea, Ad } from '@/types';
+import { TradeIdea, Ad, Server } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -29,13 +28,20 @@ const fetchApprovedAds = async (): Promise<Ad[]> => {
     return data as Ad[];
 };
 
-interface AffiliateLink {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  icon: string;
-}
+const fetchPublicServers = async (): Promise<Server[]> => {
+    const { data, error } = await supabase
+        .from('servers')
+        .select('*, profiles(username, avatar_url)')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+    if (error) {
+        console.error('Error fetching servers:', error);
+        return [];
+    }
+    return data || [];
+};
 
 const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
     const { data, error } = await supabase
@@ -50,7 +56,7 @@ const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
     return data || [];
 };
 
-export type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' });
+export type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' }) | (Server & { viewType: 'server' });
 
 export const useAnalysisFeed = () => {
     const { user } = useAuth();
@@ -68,6 +74,11 @@ export const useAnalysisFeed = () => {
     const { data: affiliateLinks, isLoading: isLoadingAffiliates, error: affiliatesError } = useQuery({
         queryKey: ['affiliateLinks'],
         queryFn: fetchAffiliateLinks,
+    });
+    
+    const { data: servers, isLoading: isLoadingServers, error: serversError } = useQuery({
+        queryKey: ['publicServersForFeed'],
+        queryFn: fetchPublicServers,
     });
     
     const { data: userLikesData } = useQuery({
@@ -89,6 +100,7 @@ export const useAnalysisFeed = () => {
     const feed = useMemo((): FeedItem[] => {
         const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));
         const approvedAds: (Ad & { viewType: 'ad' })[] = (ads || []).map(ad => ({ ...ad, viewType: 'ad' }));
+        const publicServers: (Server & { viewType: 'server' })[] = (servers || []).map(server => ({ ...server, viewType: 'server' }));
     
         const promotedLinks: (Ad & { viewType: 'ad' })[] = (affiliateLinks || []).map((link, index) => ({
             id: -(index + 1),
@@ -110,31 +122,32 @@ export const useAnalysisFeed = () => {
         }));
         
         const allAds = [...approvedAds, ...promotedLinks];
+        const allContent = [...publicServers, ...allAds];
     
         if (!ideas.length) {
-            return allAds;
+            return allContent;
         }
         
         const combinedFeed: FeedItem[] = [...ideas];
-        let adIndex = 0;
-        const adInterval = 4;
+        let contentIndex = 0;
+        const contentInterval = 4;
     
-        for (let i = adInterval; i < combinedFeed.length; i += (adInterval + 1)) {
-            if (adIndex < allAds.length) {
-                combinedFeed.splice(i, 0, allAds[adIndex]);
-                adIndex++;
+        for (let i = contentInterval; i < combinedFeed.length; i += (contentInterval + 1)) {
+            if (contentIndex < allContent.length) {
+                combinedFeed.splice(i, 0, allContent[contentIndex]);
+                contentIndex++;
             }
         }
     
-        if (adIndex < allAds.length) {
-            combinedFeed.push(...allAds.slice(adIndex));
+        if (contentIndex < allContent.length) {
+            combinedFeed.push(...allContent.slice(contentIndex));
         }
         
         return combinedFeed;
-      }, [tradeIdeas, ads, affiliateLinks]);
+      }, [tradeIdeas, ads, affiliateLinks, servers]);
 
-      const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates;
-      const error = ideasError || adsError || affiliatesError;
+      const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates || isLoadingServers;
+      const error = ideasError || adsError || affiliatesError || serversError;
 
       return { feed, isLoading, error, userLikes };
 };
