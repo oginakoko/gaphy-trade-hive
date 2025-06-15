@@ -1,7 +1,9 @@
+
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { TradeIdea, Ad, Server } from '@/types';
+import { TradeIdea, Ad, AffiliateLink } from '@/types';
+import { Server } from '@/types/server';
 import { useAuth } from '@/hooks/useAuth';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
@@ -31,7 +33,7 @@ const fetchApprovedAds = async (): Promise<Ad[]> => {
 const fetchPublicServers = async (): Promise<Server[]> => {
     const { data, error } = await supabase
         .from('servers')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles!owner_id(username, avatar_url)')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(3);

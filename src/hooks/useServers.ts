@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,7 +6,7 @@ import { Server, ServerMember } from '@/types/server';
 const fetchPublicServers = async (): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('servers')
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles!owner_id(username, avatar_url)')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
@@ -18,11 +17,15 @@ const fetchPublicServers = async (): Promise<Server[]> => {
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   const { data, error } = await supabase
     .from('server_members')
-    .select('servers(*, profiles(username, avatar_url))')
+    .select('servers(*, profiles!owner_id(username, avatar_url))')
     .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
-  return data.map(item => item.servers).filter(Boolean) as Server[];
+  if (!data) return [];
+
+  // Supabase can return an array for the `servers` relation, so we flatMap it.
+  const servers = data.flatMap(item => item.servers || []).filter(Boolean);
+  return servers as Server[];
 };
 
 const createServer = async (serverData: {
