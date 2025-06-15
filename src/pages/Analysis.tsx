@@ -8,6 +8,7 @@ import GaphyBot from '@/components/landing/GaphyBot';
 import { useAnalysisFeed } from '@/hooks/useAnalysisFeed';
 import Feed from '@/components/analysis/Feed';
 import ServerRecommendations from '@/components/analysis/ServerRecommendations';
+import TopServers from '@/components/analysis/TopServers';
 
 const Analysis = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
@@ -27,8 +28,9 @@ const Analysis = () => {
                     userLikes={userLikes}
                 />
             </div>
-            <div className="hidden lg:block">
+            <div className="hidden lg:block space-y-8">
               <ServerRecommendations />
+              <TopServers />
             </div>
         </div>
       </main>
