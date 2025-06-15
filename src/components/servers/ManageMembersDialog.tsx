@@ -1,13 +1,14 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useServerMembers } from '@/hooks/useServerMembers';
-import { Server } from '@/types/server';
+import { Server, ServerMember } from '@/types/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '../ui/use-toast';
 import { Skeleton } from '../ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface ManageMembersDialogProps {
   server: Server;
@@ -16,13 +17,24 @@ interface ManageMembersDialogProps {
 }
 
 const ManageMembersDialog = ({ server, isOpen, onClose }: ManageMembersDialogProps) => {
-  const { members, isLoading, removeMember, isRemovingMember } = useServerMembers(server.id);
+  const { members, isLoading, removeMember, isRemovingMember, updateMemberRole, isUpdatingMemberRole } = useServerMembers(server.id);
   const { user } = useAuth();
 
   const handleRemoveMember = (userId: string) => {
     removeMember({ serverId: server.id, userId }, {
       onSuccess: () => {
         toast({ title: 'Success', description: 'Member removed from server.' });
+      },
+      onError: (error: any) => {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
+    });
+  };
+
+  const handleUpdateRole = (userId: string, role: ServerMember['role']) => {
+    updateMemberRole({ serverId: server.id, userId, role }, {
+      onSuccess: () => {
+        toast({ title: 'Success', description: 'Member role updated.' });
       },
       onError: (error: any) => {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -64,14 +76,35 @@ const ManageMembersDialog = ({ server, isOpen, onClose }: ManageMembersDialogPro
                   </div>
                 </div>
                 {server.owner_id === user?.id && member.user_id !== server.owner_id && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveMember(member.user_id)}
-                    disabled={isRemovingMember}
-                  >
-                    <X size={16} className="mr-1" /> Remove
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="capitalize w-32 justify-between" disabled={isUpdatingMemberRole}>
+                          {member.role} <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {(['admin', 'moderator', 'member'] as const).map(role => (
+                          <DropdownMenuItem
+                            key={role}
+                            onSelect={() => handleUpdateRole(member.user_id, role)}
+                            disabled={member.role === role}
+                            className="capitalize"
+                          >
+                            {role}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveMember(member.user_id)}
+                      disabled={isRemovingMember}
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
                 )}
                 {member.user_id === server.owner_id && (
                     <span className="text-xs text-brand-green font-bold uppercase">Owner</span>

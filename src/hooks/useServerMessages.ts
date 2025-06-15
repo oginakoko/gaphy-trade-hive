@@ -36,12 +36,12 @@ const sendMessage = async (messageData: {
 };
 
 const deleteMessage = async (messageId: string) => {
-  const { error } = await supabase
-    .from('server_messages')
-    .delete()
-    .eq('id', messageId);
+  const { data, error } = await supabase.functions.invoke('delete-server-message', {
+    body: { messageId },
+  });
 
   if (error) throw new Error(error.message);
+  return data;
 };
 
 export const useServerMessages = (serverId: string) => {
