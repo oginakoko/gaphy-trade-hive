@@ -42,6 +42,9 @@ const Servers = () => {
     return userServers.some(server => server.id === serverId);
   };
 
+  const userServerIds = new Set(userServers.map(s => s.id));
+  const discoverablePublicServers = publicServers.filter(s => !userServerIds.has(s.id));
+
   if (selectedServer) {
     return (
       <>
@@ -115,14 +118,14 @@ const Servers = () => {
                     <Skeleton key={i} className="h-[200px] glass-card" />
                   ))}
                 </div>
-              ) : publicServers.length === 0 ? (
+              ) : discoverablePublicServers.length === 0 ? (
                 <div className="glass-card rounded-xl p-8 text-center">
                   <h3 className="text-xl font-bold text-white mb-2">No Public Servers Yet</h3>
-                  <p className="text-gray-400">Be the first to create a public server!</p>
+                  <p className="text-gray-400">Create a public server or check back later!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {publicServers.map((server) => (
+                  {discoverablePublicServers.map((server) => (
                     <ServerCard
                       key={server.id}
                       server={server}
