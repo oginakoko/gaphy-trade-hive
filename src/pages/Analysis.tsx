@@ -54,14 +54,14 @@ const Analysis = () => {
     <>
       <Header />
       <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
           {isLoading && (
             <>
-              <Skeleton className="h-[358px] w-full rounded-xl glass-card" />
-              <Skeleton className="h-[358px] w-full rounded-xl glass-card" />
+              <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
+              <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
             </>
           )}
-          {error && <p className="text-center text-red-500 p-8 glass-card">Error loading trade ideas: {(error as Error).message}</p>}
+          {error && <p className="md:col-span-2 text-center text-red-500 p-8 glass-card">Error loading trade ideas: {(error as Error).message}</p>}
           {tradeIdeas?.map((idea) => {
             const likesCount = idea.likes?.[0]?.count || 0;
             const userHasLiked = userLikes.has(Number(idea.id));
@@ -75,7 +75,7 @@ const Analysis = () => {
             );
           })}
           {tradeIdeas?.length === 0 && !isLoading && !error && (
-            <div className="glass-card rounded-xl p-8 text-center">
+            <div className="md:col-span-2 glass-card rounded-xl p-8 text-center">
               <h3 className="text-xl font-bold text-white mb-2">No Trade Ideas Yet</h3>
               <p className="text-gray-400">Be the first to see a new idea. Check back soon!</p>
             </div>

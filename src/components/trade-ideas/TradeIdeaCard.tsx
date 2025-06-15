@@ -16,8 +16,8 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
   
-  const snippet = idea.breakdown.trim().length > 150 
-    ? idea.breakdown.trim().substring(0, 150) + '...' 
+  const snippet = idea.breakdown.trim().length > 100 
+    ? idea.breakdown.trim().substring(0, 100) + '...' 
     : idea.breakdown.trim();
 
   return (
@@ -27,8 +27,8 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
           <img src={idea.image_url} alt={idea.title} className="w-full h-48 object-cover" />
         </Link>
       }
-      <div className="p-6 flex flex-col flex-grow">
-          <div className="flex items-center gap-3 mb-4">
+      <div className="p-4 flex flex-col flex-grow">
+          <div className="flex items-center gap-3 mb-3">
           <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
           <div>
               <p className="font-bold text-white">{authorName}</p>
@@ -38,13 +38,13 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked }: TradeIdeaCardProps) =
           <h3 className="text-xl font-bold text-gray-300 mb-2 group-hover:text-white transition-colors">
             <Link to={`/trade-ideas/${idea.id}`} className="hover:text-white transition-colors">{idea.title}</Link>
           </h3>
-          <div className="prose prose-sm prose-invert text-gray-400 mb-4 flex-grow max-w-none overflow-hidden">
+          <div className="prose prose-sm prose-invert text-gray-400 mb-3 flex-grow max-w-none overflow-hidden">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {snippet}
             </ReactMarkdown>
           </div>
 
-          <div className="flex items-center justify-between text-gray-400 mt-auto pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between text-gray-400 mt-auto pt-3 border-t border-white/10">
               <div className="flex items-center gap-4">
                   <LikeButton
                       tradeIdeaId={idea.id}
