@@ -105,39 +105,41 @@ const Analysis = () => {
   return (
     <>
       <Header />
-      <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-8">
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-          {isLoading && (
-            <>
-              <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
-              <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
-            </>
-          )}
-          {error && <p className="md:col-span-2 text-center text-red-500 p-8 glass-card">Error loading content: {(error as Error).message}</p>}
-          
-          {combinedFeed.map((item) => {
-            if (item.viewType === 'idea') {
-              const likesCount = item.likes?.[0]?.count || 0;
-              const userHasLiked = userLikes.has(Number(item.id));
-              return (
-                <TradeIdeaCard
-                  key={`idea-${item.id}`}
-                  idea={item}
-                  likesCount={likesCount}
-                  userHasLiked={userHasLiked}
-                />
-              );
-            } else { // item.viewType === 'ad'
-              return <AdCard key={`ad-${item.id}`} ad={item} />;
-            }
-          })}
+      <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-8 container mx-auto px-4">
+        <div className="lg:col-span-2 flex justify-center">
+            <div className="w-full max-w-xl space-y-8">
+                {isLoading && (
+                    <>
+                    <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
+                    <Skeleton className="h-[420px] w-full rounded-xl glass-card" />
+                    </>
+                )}
+                {error && <p className="text-center text-red-500 p-8 glass-card">Error loading content: {(error as Error).message}</p>}
+                
+                {combinedFeed.map((item) => {
+                    if (item.viewType === 'idea') {
+                    const likesCount = item.likes?.[0]?.count || 0;
+                    const userHasLiked = userLikes.has(Number(item.id));
+                    return (
+                        <TradeIdeaCard
+                        key={`idea-${item.id}`}
+                        idea={item}
+                        likesCount={likesCount}
+                        userHasLiked={userHasLiked}
+                        />
+                    );
+                    } else { // item.viewType === 'ad'
+                    return <AdCard key={`ad-${item.id}`} ad={item} />;
+                    }
+                })}
 
-          {combinedFeed.length === 0 && !isLoading && !error && (
-            <div className="md:col-span-2 glass-card rounded-xl p-8 text-center">
-              <h3 className="text-xl font-bold text-white mb-2">No Content Yet</h3>
-              <p className="text-gray-400">Check back soon for new trade ideas and more!</p>
+                {combinedFeed.length === 0 && !isLoading && !error && (
+                    <div className="glass-card rounded-xl p-8 text-center">
+                    <h3 className="text-xl font-bold text-white mb-2">No Content Yet</h3>
+                    <p className="text-gray-400">Check back soon for new trade ideas and more!</p>
+                    </div>
+                )}
             </div>
-          )}
         </div>
         <aside className="space-y-8">
           <AffiliateLinks />
@@ -158,3 +160,4 @@ const Analysis = () => {
 };
 
 export default Analysis;
+
