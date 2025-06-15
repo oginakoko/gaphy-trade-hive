@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,35 +20,15 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
-  mentioned_users?: string[];
 }) => {
-  const { mentioned_users, ...messageToInsert } = messageData;
   const { data, error } = await supabase
     .from('server_messages')
-    .insert(messageToInsert)
+    .insert(messageData)
     .select('*, profiles(username, avatar_url)')
     .single();
 
   if (error) throw new Error(error.message);
-
-  if (data && mentioned_users && mentioned_users.length > 0) {
-    const notifications = mentioned_users.map(mentionedId => ({
-      recipient_id: mentionedId,
-      sender_id: messageData.user_id,
-      type: 'mention',
-      reference_id: data.id,
-      server_id: messageData.server_id,
-    }));
-
-    const { error: notificationError } = await supabase
-      .from('notifications')
-      .insert(notifications);
-    
-    if (notificationError) {
-      console.error('Failed to create notifications:', notificationError);
-    }
-  }
-
+  
   return data;
 };
 
