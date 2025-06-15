@@ -61,7 +61,9 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('server-media')
-          .upload(filePath, mediaFile);
+          .upload(filePath, mediaFile, {
+            contentType: mediaFile.type,
+          });
 
         if (uploadError) throw uploadError;
 
