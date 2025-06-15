@@ -1,15 +1,15 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Send } from 'lucide-react';
-import { Profile } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ServerMessageInputProps {
   onSendMessage: (message: string, file: File | null) => void;
   isSending: boolean;
-  members: Profile[];
+  members: { id: string; username: string | null; avatar_url: string | null; }[];
 }
 
 const ServerMessageInput = ({ onSendMessage, isSending, members }: ServerMessageInputProps) => {
@@ -18,7 +18,7 @@ const ServerMessageInput = ({ onSendMessage, isSending, members }: ServerMessage
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
-  const [filteredMembers, setFilteredMembers] = useState<Profile[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<{ id: string; username: string | null; avatar_url: string | null; }[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {

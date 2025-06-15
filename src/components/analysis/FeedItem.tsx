@@ -2,7 +2,6 @@
 import { FeedItem as FeedItemType } from '@/hooks/useAnalysisFeed';
 import TradeIdeaCard from '@/components/trade-ideas/TradeIdeaCard';
 import AdCard from '@/components/ads/AdCard';
-import ServerFeedCard from '@/components/servers/ServerFeedCard';
 
 interface FeedItemProps {
     item: FeedItemType;
@@ -20,10 +19,6 @@ const FeedItem = ({ item, userLikes }: FeedItemProps) => {
                 userHasLiked={userHasLiked}
             />
         );
-    } 
-    
-    if (item.viewType === 'server') {
-        return <ServerFeedCard server={item} />;
     }
     
     // item.viewType === 'ad'

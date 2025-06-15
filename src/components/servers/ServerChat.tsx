@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server } from '@/types/server';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +38,14 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
+
+  const mentionableMembers = useMemo(() => {
+    return members.map(member => ({
+        id: member.user_id,
+        username: member.profiles?.username ?? null,
+        avatar_url: member.profiles?.avatar_url ?? null,
+    })).filter(member => member.username);
+  }, [members]);
 
   const handleSendMessage = async (message: string, mediaFile: File | null) => {
     if (!message && !mediaFile) return;
@@ -80,9 +88,9 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
     let match;
     while ((match = mentionRegex.exec(message)) !== null) {
       const username = match[1];
-      const mentionedUser = members.find(m => m.username === username);
-      if (mentionedUser && mentionedUser.id !== user?.id) {
-        mentioned_users.add(mentionedUser.id);
+      const mentionedUser = members.find(m => m.profiles?.username === username);
+      if (mentionedUser && mentionedUser.user_id !== user?.id) {
+        mentioned_users.add(mentionedUser.user_id);
       }
     }
 
@@ -138,7 +146,7 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
 
       <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} serverOwnerId={server.owner_id} />
 
-      <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} members={members} />
+      <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} members={mentionableMembers} />
 
       <EditServerDialog
         server={server}
