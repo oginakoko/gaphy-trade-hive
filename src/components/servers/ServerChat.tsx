@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server, ServerMessage } from '@/types/server';
@@ -28,7 +27,9 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const { members } = useServerMembers(initialServer.id);
   
   const [server, setServer] = useState(initialServer);
-  const [replyingTo, setReplyingTo] = useState<ServerMessage | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
 
   useEffect(() => {
     const updatedServer = userServers.find(s => s.id === initialServer.id);
@@ -36,10 +37,6 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       setServer(updatedServer);
     }
   }, [userServers, initialServer.id]);
-
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
 
   const mentionableMembers = useMemo(() => {
     return members.map(member => ({
@@ -92,10 +89,9 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
-      parent_message_id: replyingTo?.id,
     }, {
       onSuccess: () => {
-        setReplyingTo(null);
+        // Reply functionality removed for now
       },
       onError: (error: any) => {
         toast({
@@ -148,18 +144,7 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         onLeave={handleLeaveServer}
       />
 
-      <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} serverOwnerId={server.owner_id} onReply={setReplyingTo} />
-      
-      {replyingTo && (
-        <div className="p-2 px-4 border-t border-gray-700 bg-gray-800 text-sm text-gray-300 flex justify-between items-center">
-          <div>
-            Replying to <span className="font-semibold text-white">{replyingTo.profiles?.username || 'Anonymous'}</span>
-          </div>
-          <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-gray-700 rounded-full">
-            <X size={16} />
-          </button>
-        </div>
-      )}
+      <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} serverOwnerId={server.owner_id} onReply={() => {}} />
 
       <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} members={mentionableMembers} />
 
