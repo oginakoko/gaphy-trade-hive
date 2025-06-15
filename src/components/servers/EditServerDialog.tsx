@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,7 +86,13 @@ const EditServerDialog = ({ server, isOpen, onClose }: EditServerDialogProps) =>
 
           <div>
             <Label className="text-white">Server Image</Label>
-            <ImageUploader value={imageUrl || undefined} onChange={setImageUrl} bucketName="server-images" />
+            <ImageUploader
+              value={imageUrl || undefined}
+              onChange={setImageUrl}
+              bucketName="server-images"
+              displayStyle="avatar"
+              nameForFallback={name}
+            />
           </div>
 
           <div className="flex items-center space-x-2">

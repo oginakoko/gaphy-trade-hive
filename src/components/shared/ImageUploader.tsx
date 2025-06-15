@@ -1,21 +1,25 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UploadCloud, X } from 'lucide-react';
+import { Loader2, UploadCloud, X, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ImageUploaderProps {
   value?: string;
   onChange: (value: string | null) => void;
   bucketName: string;
+  displayStyle?: 'large' | 'avatar';
+  nameForFallback?: string;
 }
 
-const ImageUploader = ({ value, onChange, bucketName }: ImageUploaderProps) => {
+const ImageUploader = ({ value, onChange, bucketName, displayStyle = 'large', nameForFallback }: ImageUploaderProps) => {
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -62,6 +66,59 @@ const ImageUploader = ({ value, onChange, bucketName }: ImageUploaderProps) => {
         toast({ title: 'Error removing image', description: error.message, variant: 'destructive' });
     }
   };
+
+  const getInitials = (name?: string) => {
+    if (!name || name.trim() === '') return <ImageIcon size={48} className="text-gray-400" />;
+    return name.trim().split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  if (displayStyle === 'avatar') {
+    return (
+       <div className="flex items-center gap-4">
+            <div className="relative group">
+                <Avatar className="h-24 w-24">
+                    <AvatarImage src={value || undefined} alt="Uploaded image" />
+                    <AvatarFallback className="text-3xl bg-brand-gray-200/50">
+                        {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-gray-400" /> : getInitials(nameForFallback)}
+                    </AvatarFallback>
+                </Avatar>
+                
+                {value && !isUploading && (
+                    <Button 
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-0 right-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveImage();
+                        }}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+
+                 <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
+                    <span className="sr-only">Upload new image</span>
+                </button>
+            </div>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleUpload} 
+                className="hidden" 
+                accept="image/*" 
+                disabled={isUploading}
+            />
+        </div>
+    );
+  }
 
   return (
     <div>

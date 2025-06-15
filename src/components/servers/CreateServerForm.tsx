@@ -87,6 +87,8 @@ const CreateServerForm = ({ onClose }: CreateServerFormProps) => {
               value={imageUrl || undefined}
               onChange={setImageUrl}
               bucketName="server-images"
+              displayStyle="avatar"
+              nameForFallback={name}
             />
           </div>
 
