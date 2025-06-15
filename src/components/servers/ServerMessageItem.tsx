@@ -9,11 +9,14 @@ import { useAuth } from '@/hooks/useAuth';
 interface ServerMessageItemProps {
   msg: ServerMessage;
   onDelete: (messageId: string) => void;
+  serverOwnerId: string;
 }
 
-const ServerMessageItem = ({ msg, onDelete }: ServerMessageItemProps) => {
+const ServerMessageItem = ({ msg, onDelete, serverOwnerId }: ServerMessageItemProps) => {
   const { user } = useAuth();
   const isAuthor = user?.id === msg.user_id;
+  const isServerOwner = user?.id === serverOwnerId;
+  const canDelete = isAuthor || isServerOwner;
 
   return (
     <div className="flex gap-3 group relative pr-8">
@@ -63,7 +66,7 @@ const ServerMessageItem = ({ msg, onDelete }: ServerMessageItemProps) => {
           </div>
         )}
       </div>
-      {isAuthor && (
+      {canDelete && (
         <button
           onClick={() => onDelete(msg.id)}
           className="absolute top-1 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"

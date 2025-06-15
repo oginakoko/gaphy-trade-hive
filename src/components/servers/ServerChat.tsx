@@ -21,7 +21,7 @@ interface ServerChatProps {
 const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const { user } = useAuth();
   const { messages, sendMessage, isSending, deleteMessage } = useServerMessages(initialServer.id);
-  const { userServers } = useServers();
+  const { userServers, leaveServer } = useServers();
   
   // Keep local state for the server to reflect updates without a full page reload
   const [server, setServer] = useState(initialServer);
@@ -99,6 +99,18 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
     });
   };
 
+  const handleLeaveServer = () => {
+    leaveServer({ serverId: server.id }, {
+      onSuccess: () => {
+        toast({ title: 'Success', description: `You have left ${server.name}.` });
+        onBack();
+      },
+      onError: (error: any) => {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       <ServerChatHeader
@@ -107,9 +119,10 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         onEdit={() => setIsEditOpen(true)}
         onDelete={() => setIsDeleteOpen(true)}
         onManageMembers={() => setIsManageMembersOpen(true)}
+        onLeave={handleLeaveServer}
       />
 
-      <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} />
+      <ServerMessageList messages={messages} onDeleteMessage={handleDeleteMessage} serverOwnerId={server.owner_id} />
 
       <ServerMessageInput onSendMessage={handleSendMessage} isSending={isSending} />
 

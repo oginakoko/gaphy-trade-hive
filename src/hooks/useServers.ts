@@ -83,6 +83,28 @@ const joinServer = async (serverId: string, userId: string) => {
   if (error) throw new Error(error.message);
 };
 
+const leaveServer = async ({ serverId, userId }: { serverId: string; userId: string }) => {
+  const { data: server, error: serverError } = await supabase
+    .from('servers')
+    .select('owner_id')
+    .eq('id', serverId)
+    .single();
+
+  if (serverError) throw new Error(serverError.message);
+
+  if (server.owner_id === userId) {
+    throw new Error("Server owner cannot leave. You can delete the server instead.");
+  }
+
+  const { error } = await supabase
+    .from('server_members')
+    .delete()
+    .eq('server_id', serverId)
+    .eq('user_id', userId);
+
+  if (error) throw new Error(error.message);
+};
+
 const updateServer = async (serverData: {
   id: string;
   name: string;
@@ -143,6 +165,17 @@ export const useServers = () => {
     },
   });
 
+  const leaveServerMutation = useMutation({
+    mutationFn: ({ serverId }: { serverId: string }) => {
+        if (!user) throw new Error("User not authenticated");
+        return leaveServer({ serverId, userId: user.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userServers', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['publicServers'] });
+    },
+  });
+
   const updateServerMutation = useMutation({
     mutationFn: updateServer,
     onSuccess: (updatedServer) => {
@@ -165,10 +198,12 @@ export const useServers = () => {
     isLoading: isLoadingPublic || isLoadingUser,
     createServer: createServerMutation.mutate,
     joinServer: joinServerMutation.mutate,
+    leaveServer: leaveServerMutation.mutate,
     updateServer: updateServerMutation.mutate,
     deleteServer: deleteServerMutation.mutate,
     isCreating: createServerMutation.isPending,
     isJoining: joinServerMutation.isPending,
+    isLeaving: leaveServerMutation.isPending,
     isUpdating: updateServerMutation.isPending,
     isDeleting: deleteServerMutation.isPending,
   };
