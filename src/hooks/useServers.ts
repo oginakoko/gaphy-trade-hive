@@ -24,6 +24,7 @@ const fetchPublicServers = async (): Promise<Server[]> => {
 };
 
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
+  // Fetch all servers where user is a member (both public and private)
   const { data, error } = await supabase
     .from('server_members')
     .select('servers!inner(*, profiles!owner_id(username, avatar_url), server_members(count))')
@@ -43,6 +44,26 @@ const fetchUserServers = async (userId: string): Promise<Server[]> => {
             member_count: server_members[0]?.count ?? 0
         };
     });
+
+  return serversWithCount as Server[];
+};
+
+const fetchOwnedServers = async (userId: string): Promise<Server[]> => {
+  const { data, error } = await supabase
+    .from('servers')
+    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
+    .eq('owner_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  
+  const serversWithCount = (data as any[]).map(s => {
+      const { server_members, ...rest } = s;
+      return {
+          ...rest,
+          member_count: server_members[0]?.count ?? 0
+      };
+  });
 
   return serversWithCount as Server[];
 };
@@ -158,6 +179,12 @@ export const useServers = () => {
     enabled: !!user,
   });
 
+  const { data: ownedServers, isLoading: isLoadingOwned } = useQuery({
+    queryKey: ['ownedServers', user?.id],
+    queryFn: () => fetchOwnedServers(user!.id),
+    enabled: !!user,
+  });
+
   const createServerMutation = useMutation({
     mutationFn: createServer,
     onSuccess: () => {
@@ -205,6 +232,7 @@ export const useServers = () => {
   return {
     publicServers: publicServers || [],
     userServers: userServers || [],
+    ownedServers: ownedServers || [],
     isLoading: isLoadingPublic || isLoadingUser,
     createServer: createServerMutation.mutate,
     joinServer: joinServerMutation.mutate,

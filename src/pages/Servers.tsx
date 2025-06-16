@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -28,14 +27,30 @@ const Servers = () => {
   useEffect(() => {
     const serverIdFromUrl = searchParams.get('server_id');
     if (serverIdFromUrl && !isLoading) {
-      const serverToSelect = userServers.find(s => s.id === serverIdFromUrl);
-      if (serverToSelect) {
-        setSelectedServer(serverToSelect);
-        searchParams.delete('server_id');
-        setSearchParams(searchParams, { replace: true });
+      // First check if user is already a member
+      const memberServer = userServers.find(s => s.id === serverIdFromUrl);
+      if (memberServer) {
+        setSelectedServer(memberServer);
+      } else {
+        // Check if it's a public server they can join
+        const publicServer = publicServers.find(s => s.id === serverIdFromUrl);
+        if (publicServer) {
+          toast({
+            title: 'Server Found',
+            description: `Found "${publicServer.name}". Join to access it!`,
+          });
+        } else {
+          toast({
+            title: 'Server Not Found',
+            description: 'This server may be private or no longer exist.',
+            variant: 'destructive',
+          });
+        }
       }
+      searchParams.delete('server_id');
+      setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, isLoading, userServers, setSearchParams]);
+  }, [searchParams, isLoading, userServers, publicServers, setSearchParams]);
 
   useEffect(() => {
     if (selectedServer) {
@@ -117,7 +132,7 @@ const Servers = () => {
               </Button>
             </div>
 
-            {/* My Servers */}
+            {/* My Servers - Show ALL servers user is member of */}
             {userServers.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold text-white mb-4">My Servers</h2>
