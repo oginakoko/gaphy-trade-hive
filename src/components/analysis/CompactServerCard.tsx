@@ -1,8 +1,10 @@
 
 import { Server } from '@/types/server';
 import { Button } from '@/components/ui/button';
-import { Users, Lock } from 'lucide-react';
+import { Users, Lock, Share } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
+import { useState } from 'react';
 
 interface CompactServerCardProps {
   server: Server;
@@ -12,9 +14,30 @@ interface CompactServerCardProps {
 
 const CompactServerCard = ({ server, onJoin, isJoining }: CompactServerCardProps) => {
     const navigate = useNavigate();
+    const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
     
     const handleCardClick = () => {
         navigate(`/servers`);
+    };
+
+    const handleShareServer = async (e: React.MouseEvent, serverId: string, serverName: string) => {
+        e.stopPropagation();
+        const shareUrl = `${window.location.origin}/servers?server_id=${serverId}`;
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopiedServerId(serverId);
+            toast({
+                title: 'Link Copied',
+                description: `"${serverName}" server link has been copied to clipboard`,
+            });
+            setTimeout(() => setCopiedServerId(null), 2000);
+        } catch (err) {
+            toast({
+                title: 'Error',
+                description: 'Failed to copy link',
+                variant: 'destructive',
+            });
+        }
     };
 
   return (
@@ -30,9 +53,24 @@ const CompactServerCard = ({ server, onJoin, isJoining }: CompactServerCardProps
              {!server.is_public && <Lock size={12} />}
         </div>
       </div>
-      <Button size="sm" onClick={(e) => { e.stopPropagation(); onJoin(server.id); }} disabled={isJoining} className="bg-brand-green text-black hover:bg-brand-green/80 flex-shrink-0">
-        {isJoining ? '...' : 'Join'}
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={(e) => handleShareServer(e, server.id, server.name)} 
+          className="p-1 h-8 w-8"
+        >
+          <Share size={12} />
+        </Button>
+        <Button 
+          size="sm" 
+          onClick={(e) => { e.stopPropagation(); onJoin(server.id); }} 
+          disabled={isJoining} 
+          className="bg-brand-green text-black hover:bg-brand-green/80 flex-shrink-0"
+        >
+          {isJoining ? '...' : 'Join'}
+        </Button>
+      </div>
     </div>
   );
 };

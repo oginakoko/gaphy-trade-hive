@@ -3,7 +3,9 @@ import { Server } from '@/types/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, MessageCircle } from 'lucide-react';
+import { Users, MessageCircle, Share } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { useState } from 'react';
 
 interface ServerCardProps {
   server: Server;
@@ -14,6 +16,27 @@ interface ServerCardProps {
 }
 
 const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCardProps) => {
+  const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
+
+  const handleShareServer = async (serverId: string, serverName: string) => {
+    const shareUrl = `${window.location.origin}/servers?server_id=${serverId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedServerId(serverId);
+      toast({
+        title: 'Link Copied',
+        description: `"${serverName}" server link has been copied to clipboard`,
+      });
+      setTimeout(() => setCopiedServerId(null), 2000);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to copy link',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Card className="glass-card hover:glass-card-hover transition-all duration-200 flex flex-col">
       <CardHeader className="p-4 pb-2">
@@ -30,6 +53,15 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
               by {server.profiles?.username || 'Anonymous'}
             </p>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleShareServer(server.id, server.name)}
+            className="flex items-center gap-1"
+          >
+            <Share size={12} />
+            {copiedServerId === server.id ? 'Copied!' : 'Share'}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-2 space-y-3 flex-grow flex flex-col">
