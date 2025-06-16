@@ -10,23 +10,38 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { useServerMembers } from '@/hooks/useServerMembers';
 
 interface ServerMessageItemProps {
   msg: ServerMessage;
   onDelete: (messageId: string) => void;
   serverOwnerId: string;
   onReply: (message: ServerMessage) => void;
+  serverId: string;  // Added serverId prop
 }
 
-const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply }: ServerMessageItemProps) => {
+const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply, serverId }: ServerMessageItemProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(msg.content || '');
+  const { members } = useServerMembers(serverId);
 
   const isAuthor = user?.id === msg.user_id;
   const isServerOwner = user?.id === serverOwnerId;
-  const canDelete = isAuthor || isServerOwner;
+  
+  // Get current user's member role
+  const currentUserRole = members.find(m => m.user_id === user?.id)?.role;
+  const messageAuthorRole = members.find(m => m.user_id === msg.user_id)?.role;
+  
+  // Can delete if:
+  // 1. User is the message author
+  // 2. User is the server owner
+  // 3. User is a moderator AND message author is not a moderator or owner
+  const canDelete = isAuthor || 
+    isServerOwner || 
+    (currentUserRole === 'moderator' && messageAuthorRole !== 'moderator' && messageAuthorRole !== 'owner');
+  
   const canEdit = isAuthor && msg.content; // Can only edit messages with text content
 
   const updateMessageMutation = useMutation({

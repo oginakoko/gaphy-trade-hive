@@ -13,9 +13,35 @@ const AdCard = ({ ad }: AdCardProps) => {
   return (
     <div className="group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10">
       {ad.media_url &&
-        <a href={ad.link_url} target="_blank" rel="noopener noreferrer" className="block w-full h-40 bg-brand-gray-300">
-          {ad.media_type === 'image' && <img src={ad.media_url} alt={ad.title} className="w-full h-full object-cover" />}
-          {ad.media_type === 'video' && <video src={ad.media_url} autoPlay loop muted playsInline className="w-full h-full object-cover" />}
+        <a href={ad.link_url} target="_blank" rel="noopener noreferrer" className="block w-full h-40 bg-brand-gray-300 relative">
+          {ad.media_type === 'image' && (
+            <img 
+              src={ad.media_url} 
+              alt={ad.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = '/images/ads/default-ad.png';
+              }}
+            />
+          )}
+          {ad.media_type === 'video' && (
+            <video 
+              src={ad.media_url} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to image if video fails
+                const img = document.createElement('img');
+                img.src = '/images/ads/default-ad.png';
+                img.className = 'w-full h-full object-cover';
+                e.currentTarget.parentNode?.appendChild(img);
+                e.currentTarget.remove();
+              }}
+            />
+          )}
         </a>
       }
       <div className="p-3 flex flex-col flex-grow">

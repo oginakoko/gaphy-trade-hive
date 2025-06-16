@@ -25,27 +25,33 @@ const fetchPublicServers = async (): Promise<Server[]> => {
 
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   // Fetch all servers where user is a member (both public and private)
-  const { data, error } = await supabase
+  const { data: memberData, error: memberError } = await supabase
     .from('server_members')
-    .select('servers!inner(*, profiles!owner_id(username, avatar_url), server_members(count))')
+    .select(`
+      servers(
+        *,
+        profiles!owner_id(username, avatar_url),
+        server_members(count)
+      )
+    `)
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
-  if (!data) return [];
+  if (memberError) throw memberError;
+  if (!memberData) return [];
 
-  const serversWithCount = (data as any[])
-    .map(item => item.servers)
-    .filter(Boolean)
-    .flat()
-    .map(server => {
-        const { server_members, ...rest } = server;
-        return {
-            ...rest,
-            member_count: server_members[0]?.count ?? 0
-        };
-    });
+  // memberData is an array of { servers: { ...server fields..., server_members: [...] } }
+  const serversWithCount: Server[] = memberData
+    .map((item: any) => {
+      if (!item.servers) return null;
+      const { server_members, ...server } = item.servers;
+      return {
+        ...server,
+        member_count: Array.isArray(server_members) && server_members[0]?.count ? server_members[0].count : 0
+      };
+    })
+    .filter(Boolean);
 
-  return serversWithCount as Server[];
+  return serversWithCount;
 };
 
 const fetchOwnedServers = async (userId: string): Promise<Server[]> => {
@@ -71,28 +77,64 @@ const fetchOwnedServers = async (userId: string): Promise<Server[]> => {
 const createServer = async (serverData: {
   name: string;
   description: string;
-  image_url?: string;
+  image_url?: string | null;
   is_public: boolean;
 }) => {
+  const userResponse = await supabase.auth.getUser();
+  const user = userResponse.data?.user;
+  if (!user?.id) throw new Error('User must be logged in to create a server');
+
+  // Extra validation and logging
+  if (!serverData.name || !serverData.description) {
+    throw new Error('Server name and description are required');
+  }
+  if (typeof serverData.is_public !== 'boolean') {
+    throw new Error('is_public must be a boolean');
+  }
+
+  const dataToInsert = {
+    name: serverData.name,
+    description: serverData.description,
+    image_url: serverData.image_url ?? null,
+    is_public: serverData.is_public,
+    owner_id: user.id
+  };
+
+  // Log the data being inserted for debugging
+  console.log('Creating server with data:', dataToInsert);
+
   const { data, error } = await supabase
     .from('servers')
-    .insert(serverData)
-    .select()
+    .insert(dataToInsert)
+    .select('*, profiles!owner_id(username, avatar_url), server_members(count)')
     .single();
 
-  if (error) throw new Error(error.message);
-  
+  if (error) {
+    console.error('Error creating server:', error);
+    throw error;
+  }
+
   // Add creator as admin member
   const { error: memberError } = await supabase
     .from('server_members')
     .insert({
       server_id: data.id,
-      user_id: data.owner_id,
+      user_id: user.id,
       role: 'admin'
     });
 
-  if (memberError) throw new Error(memberError.message);
-  return data;
+  if (memberError) {
+    console.error('Error adding server member:', memberError);
+    throw memberError;
+  }
+
+  const { server_members, ...rest } = data as any;
+  const serverWithCount = {
+    ...rest,
+    member_count: Array.isArray(server_members) && server_members[0]?.count ? server_members[0].count : 0
+  };
+
+  return serverWithCount;
 };
 
 const joinServer = async (serverId: string, userId: string) => {

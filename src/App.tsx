@@ -23,6 +23,7 @@ import AuthGuard from "./components/auth/AuthGuard";
 import GuestGuard from "./components/auth/GuestGuard";
 import ManageApiKeys from "./pages/admin/ManageApiKeys";
 import Servers from "./pages/Servers";
+import ShortlinkRedirect from "./pages/ShortlinkRedirect"; // Import the ShortlinkRedirect component
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,9 @@ const App = () => (
                 <Route path="/admin/api-keys" element={<ManageApiKeys />} />
               </Route>
               
+              {/* Redirect route for shortlinks */}
+              <Route path="/s/:code" element={<ShortlinkRedirect />} />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

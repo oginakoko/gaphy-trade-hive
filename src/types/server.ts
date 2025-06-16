@@ -18,7 +18,7 @@ export interface ServerMember {
   id: string;
   server_id: string;
   user_id: string;
-  role: 'admin' | 'moderator' | 'member';
+  role: 'owner' | 'moderator' | 'member';
   joined_at: string;
   profiles?: {
     username: string | null;

@@ -1,4 +1,3 @@
-
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
 
@@ -38,7 +37,10 @@ Deno.serve(async (req) => {
     }
     console.log('Request body parsed successfully.');
 
-    const { server_id, user_id, content, media_url, media_type } = body.messageData
+    // Remove mentioned_user_ids from the insert payload
+    const { server_id, user_id, content, media_url, media_type, mentioned_user_ids } = body.messageData;
+    // Only insert fields that exist in server_messages
+    const messageInsertPayload = { server_id, user_id, content, media_url, media_type }
 
     // Create a Supabase client with the user's auth token
     const authHeader = req.headers.get('Authorization')
@@ -58,21 +60,38 @@ Deno.serve(async (req) => {
     // 1. Insert the message
     const { data: newMessage, error: messageError } = await supabaseClient
       .from('server_messages')
-      .insert({ server_id, user_id, content, media_url, media_type })
+      .insert(messageInsertPayload)
       .select('*, profiles(username, avatar_url)')
-      .single()
+      .single();
 
     if (messageError) {
       console.error('Error inserting message:', messageError);
-      throw messageError
+      throw messageError;
     }
     if (!newMessage) {
       console.error('Failed to create message, insert returned no data.');
-      throw new Error('Failed to create message.')
+      throw new Error('Failed to create message.');
     }
     console.log('Message inserted successfully:', newMessage.id);
 
-    // 2. Notification logic removed to simplify and debug.
+    // 2. Create notifications for mentions (if any)
+    if (Array.isArray(mentioned_user_ids) && mentioned_user_ids.length > 0) {
+      for (const recipientId of mentioned_user_ids) {
+        const { error: notifError } = await supabaseClient
+          .from('notifications')
+          .insert({
+            recipient_id: recipientId,
+            sender_id: user_id,
+            type: 'mention',
+            reference_id: newMessage.id, // message id as uuid
+            server_id: server_id,
+            is_read: false
+          });
+        if (notifError) {
+          console.error('Error creating mention notification:', notifError);
+        }
+      }
+    }
 
     console.log('Returning successful response for message ID:', newMessage.id);
     return new Response(JSON.stringify({ data: newMessage }), {

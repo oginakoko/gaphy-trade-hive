@@ -53,7 +53,7 @@ const CommentForm = ({ tradeIdeaId }: CommentFormProps) => {
           recipient_id: tradeIdea.user_id,
           sender_id: user.id,
           type: 'new_comment',
-          reference_id: newComment.id,
+          reference_id: String(newComment.id), // Ensure uuid as string
         });
       }
     },

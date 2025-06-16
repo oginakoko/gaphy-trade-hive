@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { corsHeaders } from '../_shared/cors.ts'
 

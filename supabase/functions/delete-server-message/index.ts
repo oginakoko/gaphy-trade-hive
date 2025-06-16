@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -27,23 +26,52 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceRoleKey) throw new Error('Missing Supabase environment variables.');
-
+    
     const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
     const requestingUser = await getUser(req, supabaseClient);
 
-    const { data: message, error: msgError } = await supabaseAdmin.from('server_messages').select('user_id, server_id').eq('id', messageId).single();
+    // Get message and its sender's role
+    const { data: message, error: msgError } = await supabaseAdmin
+      .from('server_messages')
+      .select(`
+        id,
+        user_id,
+        server_id,
+        server_members!server_messages_user_id_fkey(role)
+      `)
+      .eq('id', messageId)
+      .single();
+
     if (msgError || !message) throw new Error('Message not found.');
 
     let canDelete = false;
+    
+    // Message author can delete their own message
     if (message.user_id === requestingUser.id) {
       canDelete = true;
     } else {
-      const { data: server, error: serverError } = await supabaseAdmin.from('servers').select('owner_id').eq('id', message.server_id).single();
-      if (serverError || !server) throw new Error('Server not found for message.');
-      if (server.owner_id === requestingUser.id) {
+      // Check if requesting user is owner or moderator
+      const { data: memberData, error: memberError } = await supabaseAdmin
+        .from('server_members')
+        .select('role')
+        .eq('server_id', message.server_id)
+        .eq('user_id', requestingUser.id)
+        .single();
+
+      if (memberError) throw new Error('Failed to check user permissions.');
+      
+      // Server owner can delete any message
+      if (memberData.role === 'owner') {
         canDelete = true;
+      }
+      // Moderator can delete any message except from other moderators or owner
+      else if (memberData.role === 'moderator') {
+        const senderRole = message.server_members?.[0]?.role;
+        if (senderRole !== 'moderator' && senderRole !== 'owner') {
+          canDelete = true;
+        }
       }
     }
 
