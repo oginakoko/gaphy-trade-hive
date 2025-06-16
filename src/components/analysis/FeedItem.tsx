@@ -20,7 +20,7 @@ interface FeedItemProps {
 const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemProps) => {
   const [copiedItemId, setCopiedItemId] = useState<string | number | null>(null);
 
-  const handleSharePost = async (postId: number, title: string) => {
+  const handleSharePost = async (postId: string | number, title: string) => {
     const shareUrl = `${window.location.origin}/trade-ideas/${postId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -41,6 +41,10 @@ const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemPro
 
   if (item.viewType === 'idea') {
     const tradeIdea = item as TradeIdea & { viewType: 'idea' };
+    const ideaIdAsNumber = parseInt(tradeIdea.id);
+    const likesCount = tradeIdea.likes?.[0]?.count || 0;
+    const userHasLiked = userLikes.has(ideaIdAsNumber);
+    
     return (
       <div className="relative">
         <div className="absolute top-4 right-4 z-10">
@@ -56,9 +60,10 @@ const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemPro
         </div>
         <TradeIdeaCard 
           idea={tradeIdea} 
-          userLikes={userLikes} 
-          isAdmin={isAdmin}
-          onEdit={onEditIdea}
+          likesCount={likesCount}
+          userHasLiked={userHasLiked}
+          isAdmin={isAdmin || false}
+          onEdit={onEditIdea || (() => {})}
         />
       </div>
     );
