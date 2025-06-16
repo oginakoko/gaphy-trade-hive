@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -15,6 +15,7 @@ const Servers = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { serverId } = useParams();
   
   const { 
     publicServers, 
@@ -25,7 +26,9 @@ const Servers = () => {
   } = useServers();
 
   useEffect(() => {
-    const serverIdFromUrl = searchParams.get('server_id');
+    // Handle both URL formats: /servers/:serverId and /servers?server_id=...
+    const serverIdFromUrl = serverId || searchParams.get('server_id');
+    
     if (serverIdFromUrl && !isLoading) {
       // First check if user is already a member
       const memberServer = userServers.find(s => s.id === serverIdFromUrl);
@@ -47,10 +50,14 @@ const Servers = () => {
           });
         }
       }
-      searchParams.delete('server_id');
-      setSearchParams(searchParams, { replace: true });
+      
+      // Clean up URL parameters
+      if (searchParams.get('server_id')) {
+        searchParams.delete('server_id');
+        setSearchParams(searchParams, { replace: true });
+      }
     }
-  }, [searchParams, isLoading, userServers, publicServers, setSearchParams]);
+  }, [searchParams, serverId, isLoading, userServers, publicServers, setSearchParams]);
 
   useEffect(() => {
     if (selectedServer) {

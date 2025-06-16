@@ -19,7 +19,7 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
   const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
 
   const handleShareServer = async (serverId: string, serverName: string) => {
-    const shareUrl = `${window.location.origin}/servers?server_id=${serverId}`;
+    const shareUrl = `${window.location.origin}/servers/${serverId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedServerId(serverId);
@@ -41,15 +41,15 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
     <Card className="glass-card hover:glass-card-hover transition-all duration-200 flex flex-col">
       <CardHeader className="p-4 pb-2">
         <div className="flex items-center gap-2">
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={server.image_url || undefined} />
             <AvatarFallback className="bg-brand-green text-black font-bold">
               {server.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <CardTitle className="text-white text-base">{server.name}</CardTitle>
-            <p className="text-gray-400 text-sm">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-white text-base truncate">{server.name}</CardTitle>
+            <p className="text-gray-400 text-sm truncate">
               by {server.profiles?.username || 'Anonymous'}
             </p>
           </div>
@@ -57,10 +57,9 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
             size="sm"
             variant="outline"
             onClick={() => handleShareServer(server.id, server.name)}
-            className="flex items-center gap-1"
+            className="h-8 w-8 p-0 flex-shrink-0"
           >
             <Share size={12} />
-            {copiedServerId === server.id ? 'Copied!' : 'Share'}
           </Button>
         </div>
       </CardHeader>

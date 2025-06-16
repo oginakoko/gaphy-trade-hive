@@ -1,11 +1,13 @@
 
 import { TradeIdea } from '@/types';
-import { ArrowUpRight, Edit } from 'lucide-react';
+import { ArrowUpRight, Edit, Share } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import LikeButton from './LikeButton';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
+import { useState } from 'react';
 
 interface TradeIdeaCardProps {
   idea: TradeIdea;
@@ -16,6 +18,7 @@ interface TradeIdeaCardProps {
 }
 
 const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: TradeIdeaCardProps) => {
+  const [copiedItemId, setCopiedItemId] = useState<string | number | null>(null);
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
   
@@ -23,19 +26,48 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
     ? idea.breakdown.trim().substring(0, 70) + '...' 
     : idea.breakdown.trim();
 
+  const handleSharePost = async (postId: string | number, title: string) => {
+    const shareUrl = `${window.location.origin}/trade-ideas/${postId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedItemId(postId);
+      toast({
+        title: 'Link Copied',
+        description: `"${title}" link has been copied to clipboard`,
+      });
+      setTimeout(() => setCopiedItemId(null), 2000);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to copy link',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="relative group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10 h-full">
-      {isAdmin && (
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10 h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
-                onClick={() => onEdit(idea)}
-            >
-                <Edit size={16} />
-                <span className="sr-only">Edit Idea</span>
-            </Button>
+      <div className="absolute top-2 right-2 z-10 flex gap-1">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleSharePost(idea.id, idea.title)}
+          className="h-8 w-8 p-0 bg-black/50 backdrop-blur-sm border-white/20 text-white hover:bg-white/10"
+        >
+          <Share size={12} />
+        </Button>
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+            onClick={() => onEdit(idea)}
+          >
+            <Edit size={12} />
+          </Button>
         )}
+      </div>
+      
       {idea.image_url && 
         <Link to={`/trade-ideas/${idea.id}`} className="block">
           <img src={idea.image_url} alt={idea.title} className="w-full h-20 object-cover" />
