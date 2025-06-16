@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import Comments from '@/components/comments/Comments';
 import { useAuth } from '@/hooks/useAuth';
 import LikeButton from '@/components/trade-ideas/LikeButton';
-import MetaTags from '@/components/shared/MetaTags';
 
 const fetchTradeIdea = async (id: string): Promise<TradeIdea> => {
   const { data, error } = await supabase
@@ -58,13 +57,6 @@ const TradeIdeaPage = () => {
 
   return (
     <>
-      <MetaTags
-        title={idea?.title || 'Trade Idea'}
-        description={idea?.breakdown?.substring(0, 160) || 'View this detailed trade analysis on GaphyHive'}
-        image={idea?.image_url || undefined}
-        url={`https://gaphyhive.ai/trade-ideas/${idea?.id}`}
-        type="article"
-      />
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

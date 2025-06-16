@@ -1,3 +1,4 @@
+
 import { Comment } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,14 +54,7 @@ const CommentCard = ({ comment, tradeIdeaId }: CommentCardProps) => {
 
   return (
     <div className="flex gap-4 py-4 border-b border-white/10 last:border-b-0 group relative">
-      <img 
-        src={authorAvatar || '/images/avatars/default-avatar.png'} 
-        alt={authorName}
-        className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover"
-        onError={(e) => {
-          e.currentTarget.src = '/images/avatars/default-avatar.png';
-        }}
-      />
+      <img src={authorAvatar} alt={authorName} className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover" />
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <p className="font-bold text-white">{authorName}</p>

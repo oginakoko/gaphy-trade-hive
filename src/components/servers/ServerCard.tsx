@@ -50,19 +50,10 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
 
   return (
     <Card className="glass-card hover:glass-card-hover transition-all duration-200 flex flex-col">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2 text-brand-green mb-2">
-          <ServerIcon size={16} />
-          <span className="text-sm font-medium">Discover Gaphy Server</span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12">
-            <AvatarImage 
-              src={server.image_url || '/images/servers/default-server.png'} 
-              alt={server.name}
-              className="object-cover"
-            />
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={server.image_url || undefined} />
             <AvatarFallback className="bg-brand-green text-black font-bold">
               {server.name.charAt(0).toUpperCase()}
             </AvatarFallback>
