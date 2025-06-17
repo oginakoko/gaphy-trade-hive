@@ -1,106 +1,61 @@
 
 import { corsHeaders } from '../_shared/cors.ts'
 
-const OPENROUTER_API_KEY_SECRET = 'OPENROUTER_API_KEY'
-
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
-
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
-    console.log('=== [chat-with-ai] Edge Function Start (OpenRouter) ===')
-    console.log('Request method:', req.method, 'URL:', req.url)
-
-    // CORS preflight
-    if (req.method === 'OPTIONS') {
-      console.log('[chat-with-ai] OPTIONS preflight hit')
-      return new Response('ok', { headers: corsHeaders })
-    }
-
-    // Try to parse body
-    let requestBody: any
-    try {
-      requestBody = await req.json()
-      if (!requestBody) throw new Error('Request body JSON is empty');
-      console.log('[chat-with-ai] Parsed body:', JSON.stringify(requestBody))
-    } catch (error) {
-      console.error('[chat-with-ai] Failed parsing request body:', error)
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
-    }
-
-    // Messages received?
-    const { messages } = requestBody
-    if (!messages || !Array.isArray(messages)) {
-      console.error('[chat-with-ai] No valid "messages" array received')
-      return new Response(JSON.stringify({ error: 'Missing or invalid messages array in body' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
-    }
-
-    // Fetch OpenRouter API key from Supabase secrets
-    const openRouterApiKey = Deno.env.get(OPENROUTER_API_KEY_SECRET)
-    if (!openRouterApiKey) {
-        console.error('[chat-with-ai] OpenRouter API key not found in environment variables.')
-        return new Response(JSON.stringify({
-            error: 'AI service not configured. Ask admin to add OpenRouter API key.',
-            type: 'not_configured'
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 })
-    }
-
-    // Prepare for OpenRouter API
-    const openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions'
+    const { message, context } = await req.json()
     
-    // Format messages for OpenRouter
-    const systemPrompt: ChatMessage = {
-        role: 'system',
-        content: "You are AlphaFinder, an expert trading assistant for the GaphyHive platform. Your goal is to provide insightful, concise, and helpful analysis on financial markets and trade ideas. Your persona is professional, but friendly and approachable. Keep your answers short and to the point. Do not provide financial advice. ALWAYS include a disclaimer at the end of your response that your analysis is for educational and informational purposes only and does not constitute financial advice."
+    if (!message) {
+      return new Response(JSON.stringify({ error: 'Message is required' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
     }
 
-    const userMessages: ChatMessage[] = messages.map((msg: { sender: string; text: string }) => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text,
-    }))
-
-    const finalMessages: ChatMessage[] = [systemPrompt, ...userMessages]
-    console.log('[chat-with-ai] Sending to OpenRouter. Message count:', finalMessages.length)
-
-    // Call OpenRouter API
-    const siteUrl = req.headers.get('origin') || 'https://gaphyhive.lovable.dev'
-    const response = await fetch(openRouterUrl, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${openRouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': siteUrl,
-            'X-Title': 'GaphyHive',
-        },
-        body: JSON.stringify({
-            model: 'mistralai/mistral-7b-instruct:free',
-            messages: finalMessages,
-        }),
+    // OpenRouter DeepSeek R1 is completely free
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('OPENROUTER_API_KEY')}`,
+        'HTTP-Referer': 'https://gaphy-trading.lovable.app',
+        'X-Title': 'Gaphy Trading Course'
+      },
+      body: JSON.stringify({
+        model: 'deepseek/deepseek-r1-distill-llama-70b',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful AI assistant for Gaphy Trading Course, specializing in trading analysis, market insights, and educational content. Provide clear, concise, and helpful responses related to trading and finance.'
+          },
+          {
+            role: 'user',
+            content: context ? `Context: ${context}\n\nQuestion: ${message}` : message
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
     })
 
     if (!response.ok) {
-        const errText = await response.text()
-        console.error('[chat-with-ai] OpenRouter API error', response.status, errText)
-        return new Response(JSON.stringify({ error: 'OpenRouter API returned an error: ' + errText }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 })
+      throw new Error(`OpenRouter API error: ${response.status}`)
     }
 
     const data = await response.json()
-    const botResponseText = data.choices?.[0]?.message?.content ||
-       "I'm not sure how to respond. Please try rephrasing your question."
+    const aiResponse = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.'
 
-    return new Response(JSON.stringify({ reply: botResponseText }), {
+    return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
-
   } catch (error) {
-    // Catch all: *always* return JSON + CORS!
-    console.error('[chat-with-ai] Handler crashed:', error)
-    return new Response(JSON.stringify({
-      error: (error && error.message) ? error.message : 'Internal server error',
-    }), {
+    console.error('AI Chat Error:', error)
+    return new Response(JSON.stringify({ error: 'Failed to get AI response' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

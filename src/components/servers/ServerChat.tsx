@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server, ServerMessage } from '@/types/server';
@@ -50,10 +51,8 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const handleSendMessage = async (message: string, mediaFile: File | null) => {
     if (!message && !mediaFile) return;
 
-    // 1. Extract mentioned usernames from the message (e.g., @username)
     const mentionRegex = /@([a-zA-Z0-9_]+)/g;
     const mentionedUsernames = Array.from(message.matchAll(mentionRegex)).map(match => match[1]);
-    // 2. Map usernames to UUIDs using members list
     const mentionedUserIds = mentionedUsernames
       .map(username => mentionableMembers.find(m => m.username === username)?.id)
       .filter(Boolean);
@@ -93,13 +92,13 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
       }
     }
 
-    // Only send fields that exist in server_messages
     sendMessage({
       server_id: server.id,
       content: message,
       media_url: mediaUrl,
       media_type: mediaType,
-      // mentioned_user_ids is NOT sent to the DB, only to the backend for notification logic
+      parent_message_id: replyingTo?.id,
+      mentioned_user_ids: mentionedUserIds as string[],
     }, {
       onSuccess: () => {
         setReplyingTo(null);
@@ -160,13 +159,14 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
         onDeleteMessage={handleDeleteMessage} 
         serverOwnerId={server.owner_id}
         onReply={setReplyingTo}
-        serverId={server.id}  // Add the serverId prop
+        serverId={server.id}
       />
 
       {replyingTo && (
         <div className="p-2 px-4 border-t border-gray-700 bg-gray-800 text-sm text-gray-300 flex justify-between items-center">
           <div>
             Replying to <span className="font-semibold text-white">{replyingTo.profiles?.username || 'Anonymous'}</span>
+            {replyingTo.content && <span className="ml-2 text-gray-400">: {replyingTo.content.substring(0, 50)}...</span>}
           </div>
           <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-gray-700 rounded-full">
             <X size={16} />
