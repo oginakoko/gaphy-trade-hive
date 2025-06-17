@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -61,7 +60,8 @@ const Servers = () => {
       if (serverId) {
         // If we're on /servers/:serverId and found the server, stay on this URL
         // If server not found, redirect to /servers
-        if (!memberServer && !publicServer) {
+        const foundServer = userServers.find(s => s.id === serverIdFromUrl) || publicServers.find(s => s.id === serverIdFromUrl);
+        if (!foundServer) {
           navigate('/servers', { replace: true });
         }
       }

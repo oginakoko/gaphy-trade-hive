@@ -65,37 +65,49 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
     setIsBotThinking(true);
 
     try {
-      // Filter out image messages, as gemini-pro can't handle them
+      console.log('Calling chat-with-ai function...');
+      
+      // Filter out image messages, as the API might not handle them
       const textMessages = newMessages.filter(m => m.text).map(m => ({ sender: m.sender, text: m.text }));
 
       const { data, error } = await supabase.functions.invoke('chat-with-ai', {
         body: { messages: textMessages },
       });
 
+      console.log('Chat response:', { data, error });
+
       if (error) {
+        console.error('Supabase function error:', error);
         throw error;
       }
 
-      if (data.error) {
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
         throw new Error(data.error);
       }
       
-      const botResponse: Message = { sender: 'bot', text: data.reply };
+      const botResponse: Message = { sender: 'bot', text: data?.reply || "I'm having trouble responding right now. Please try again." };
       setMessages(prev => [...prev, botResponse]);
 
     } catch (error: any) {
       console.error("Error calling chat-with-ai function:", error);
       let errorMessage: string;
 
-      if (error.message.includes("not configured")) {
-        errorMessage = "The AI assistant is not properly configured. Please contact support for assistance.";
+      if (error.message?.includes("not configured") || error.message?.includes("not_configured")) {
+        errorMessage = "The AI assistant is not properly configured. Please ensure the OpenRouter API key is set in the admin panel.";
+      } else if (error.message?.includes("Failed to fetch")) {
+        errorMessage = "Unable to connect to the AI service. Please check your internet connection and try again.";
       } else {
-        errorMessage = "Sorry, I'm having a little trouble right now. If the problem persists, please contact our support team at [support@gaphyhive.com](mailto:support@gaphyhive.com).";
+        errorMessage = "Sorry, I'm having a little trouble right now. If the problem persists, please contact our support team.";
       }
       
       const botResponse: Message = { sender: 'bot', text: errorMessage };
       setMessages(prev => [...prev, botResponse]);
-      toast({ title: 'Chatbot Error', description: "An issue occurred with the AI assistant.", variant: 'destructive' });
+      toast({ 
+        title: 'Chatbot Error', 
+        description: "An issue occurred with the AI assistant.", 
+        variant: 'destructive' 
+      });
     } finally {
       setIsBotThinking(false);
     }
