@@ -46,6 +46,7 @@ const App = () => (
               <Route element={<AuthGuard />}>
                 <Route path="/analysis" element={<Analysis />} />
                 <Route path="/servers" element={<Servers />} />
+                <Route path="/servers/:serverId" element={<Servers />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/create-ad" element={<CreateAd />} />
               </Route>

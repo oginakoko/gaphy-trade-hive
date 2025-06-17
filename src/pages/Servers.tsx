@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -16,6 +17,7 @@ const Servers = () => {
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { serverId } = useParams();
+  const navigate = useNavigate();
   
   const { 
     publicServers, 
@@ -51,13 +53,20 @@ const Servers = () => {
         }
       }
       
-      // Clean up URL parameters
+      // Clean up URL parameters and navigate to clean URL
       if (searchParams.get('server_id')) {
         searchParams.delete('server_id');
         setSearchParams(searchParams, { replace: true });
       }
+      if (serverId) {
+        // If we're on /servers/:serverId and found the server, stay on this URL
+        // If server not found, redirect to /servers
+        if (!memberServer && !publicServer) {
+          navigate('/servers', { replace: true });
+        }
+      }
     }
-  }, [searchParams, serverId, isLoading, userServers, publicServers, setSearchParams]);
+  }, [searchParams, serverId, isLoading, userServers, publicServers, setSearchParams, navigate]);
 
   useEffect(() => {
     if (selectedServer) {
@@ -71,9 +80,10 @@ const Servers = () => {
       } else {
         // If server is no longer in the list (e.g., deleted), go back.
         setSelectedServer(null);
+        navigate('/servers', { replace: true });
       }
     }
-  }, [userServers, selectedServer]);
+  }, [userServers, selectedServer, navigate]);
 
   const handleJoinServer = (serverId: string) => {
     joinServer({ serverId });
@@ -87,6 +97,8 @@ const Servers = () => {
     const server = [...publicServers, ...userServers].find(s => s.id === serverId);
     if (server) {
       setSelectedServer(server);
+      // Update URL to reflect the selected server
+      navigate(`/servers/${serverId}`, { replace: true });
     }
   };
 
@@ -104,7 +116,10 @@ const Servers = () => {
         <div className="h-[calc(100vh-80px)]">
           <ServerChat 
             server={selectedServer} 
-            onBack={() => setSelectedServer(null)} 
+            onBack={() => {
+              setSelectedServer(null);
+              navigate('/servers', { replace: true });
+            }} 
           />
         </div>
       </>

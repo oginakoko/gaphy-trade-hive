@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
-const GEMINI_API_KEY_ID = 'GEMINI_API_KEY';
+const OPENROUTER_API_KEY_ID = 'OPENROUTER_API_KEY';
 
 const ManageApiKeys = () => {
     const navigate = useNavigate();
@@ -19,12 +20,12 @@ const ManageApiKeys = () => {
     const [isTableMissing, setIsTableMissing] = useState(false);
 
     const { data: currentKey, isLoading, error } = useQuery({
-        queryKey: ['api_key', GEMINI_API_KEY_ID],
+        queryKey: ['api_key', OPENROUTER_API_KEY_ID],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('app_config')
                 .select('value')
-                .eq('key', GEMINI_API_KEY_ID)
+                .eq('key', OPENROUTER_API_KEY_ID)
                 .single();
             
             if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -56,13 +57,13 @@ const ManageApiKeys = () => {
         mutationFn: async (keyToSave: string) => {
             const { error } = await supabase
                 .from('app_config')
-                .upsert({ key: GEMINI_API_KEY_ID, value: keyToSave });
+                .upsert({ key: OPENROUTER_API_KEY_ID, value: keyToSave });
 
             if (error) throw new Error(error.message);
         },
         onSuccess: () => {
             toast.success('API Key saved successfully.');
-            queryClient.invalidateQueries({ queryKey: ['api_key', GEMINI_API_KEY_ID] });
+            queryClient.invalidateQueries({ queryKey: ['api_key', OPENROUTER_API_KEY_ID] });
         },
         onError: (error) => {
             toast.error(`Failed to save API Key: ${error.message}`);
@@ -168,9 +169,13 @@ USING (true);
 
                 <Card className="glass-card max-w-2xl mx-auto">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-white"><Key className="w-5 h-5 text-brand-green"/> Google Gemini API Key</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-white"><Key className="w-5 h-5 text-brand-green"/> OpenRouter API Key</CardTitle>
                         <CardDescription>
-                            This key will be used for all AI features across the application. 
+                            This key will be used for all AI features across the application using OpenRouter's DeepSeek R1 model.
+                            <br />
+                            <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-brand-green hover:underline mt-2 inline-block">
+                                Get your OpenRouter API key here →
+                            </a>
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -192,7 +197,7 @@ USING (true);
                                     type="password"
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder="Enter your Google Gemini API Key"
+                                    placeholder="Enter your OpenRouter API Key"
                                     className="bg-brand-gray-200 border-brand-gray-300 text-white"
                                     disabled={isSaving}
                                 />
