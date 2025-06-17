@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,12 +8,7 @@ const fetchServerMessages = async (serverId: string): Promise<ServerMessage[]> =
     .from('server_messages')
     .select(`
       *,
-      profiles(username, avatar_url),
-      parent_message:server_messages!parent_message_id(
-        id,
-        content,
-        profiles(username, avatar_url)
-      )
+      profiles(username, avatar_url)
     `)
     .eq('server_id', serverId)
     .order('created_at', { ascending: true });
@@ -29,20 +23,22 @@ const sendMessage = async (messageData: {
   content: string;
   media_url?: string;
   media_type?: 'image' | 'video' | 'audio' | 'document';
-  parent_message_id?: string;
-  mentioned_user_ids?: string[];
 }) => {
-  // Use the edge function for sending messages to handle mentions properly
-  const { data, error } = await supabase.functions.invoke('send-server-message', {
-    body: { messageData },
-  });
+  const { data, error } = await supabase
+    .from('server_messages')
+    .insert(messageData)
+    .select(`
+      *,
+      profiles(username, avatar_url)
+    `)
+    .single();
 
   if (error) {
     console.error('Error sending message:', error);
     throw new Error(error.message || 'An unknown error occurred when sending the message.');
   }
   
-  return data.data;
+  return data;
 };
 
 const deleteMessage = async (messageId: string) => {

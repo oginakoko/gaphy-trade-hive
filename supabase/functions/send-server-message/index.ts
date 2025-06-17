@@ -1,10 +1,11 @@
-
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
 
 Deno.serve(async (req) => {
+  // Enhanced logging for debugging
   console.log(`[${new Date().toISOString()}] send-server-message invoked. Method: ${req.method}`);
 
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('Handling OPTIONS preflight request.');
     return new Response('ok', {
@@ -36,16 +37,12 @@ Deno.serve(async (req) => {
     }
     console.log('Request body parsed successfully.');
 
-    const { server_id, user_id, content, media_url, media_type, parent_message_id, mentioned_user_ids } = body.messageData;
-    const messageInsertPayload = { 
-      server_id, 
-      user_id, 
-      content, 
-      media_url, 
-      media_type,
-      parent_message_id: parent_message_id || null
-    }
+    // Remove mentioned_user_ids from the insert payload
+    const { server_id, user_id, content, media_url, media_type, mentioned_user_ids } = body.messageData;
+    // Only insert fields that exist in server_messages
+    const messageInsertPayload = { server_id, user_id, content, media_url, media_type }
 
+    // Create a Supabase client with the user's auth token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header.' }), {
@@ -60,19 +57,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    // Insert the message
+    // 1. Insert the message
     const { data: newMessage, error: messageError } = await supabaseClient
       .from('server_messages')
       .insert(messageInsertPayload)
-      .select(`
-        *,
-        profiles(username, avatar_url),
-        parent_message:server_messages!parent_message_id(
-          id,
-          content,
-          profiles(username, avatar_url)
-        )
-      `)
+      .select('*, profiles(username, avatar_url)')
       .single();
 
     if (messageError) {
@@ -85,7 +74,7 @@ Deno.serve(async (req) => {
     }
     console.log('Message inserted successfully:', newMessage.id);
 
-    // Create notifications for mentions (if any)
+    // 2. Create notifications for mentions (if any)
     if (Array.isArray(mentioned_user_ids) && mentioned_user_ids.length > 0) {
       for (const recipientId of mentioned_user_ids) {
         const { error: notifError } = await supabaseClient
@@ -94,7 +83,7 @@ Deno.serve(async (req) => {
             recipient_id: recipientId,
             sender_id: user_id,
             type: 'mention',
-            reference_id: newMessage.id,
+            reference_id: newMessage.id, // message id as uuid
             server_id: server_id,
             is_read: false
           });
@@ -126,3 +115,4 @@ Deno.serve(async (req) => {
     })
   }
 })
+

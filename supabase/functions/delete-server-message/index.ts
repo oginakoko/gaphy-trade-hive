@@ -1,5 +1,4 @@
-
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { corsHeaders } from '../_shared/cors.ts'
 
 async function getUser(req: Request, supabaseClient: SupabaseClient) {
