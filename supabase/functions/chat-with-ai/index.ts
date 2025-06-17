@@ -1,5 +1,10 @@
 
-import { corsHeaders } from '../_shared/cors.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const OPENROUTER_API_KEY_SECRET = 'OPENROUTER_API_KEY'
 
@@ -64,7 +69,7 @@ Deno.serve(async (req) => {
     const finalMessages: ChatMessage[] = [systemPrompt, ...userMessages]
     console.log('[chat-with-ai] Sending to OpenRouter. Message count:', finalMessages.length)
 
-    // Call OpenRouter API
+    // Call OpenRouter API with DeepSeek R1 model
     const siteUrl = req.headers.get('origin') || 'https://gaphyhive.lovable.dev'
     const response = await fetch(openRouterUrl, {
         method: 'POST',
@@ -75,7 +80,7 @@ Deno.serve(async (req) => {
             'X-Title': 'GaphyHive',
         },
         body: JSON.stringify({
-            model: 'mistralai/mistral-7b-instruct:free',
+            model: 'deepseek/deepseek-r1',
             messages: finalMessages,
         }),
     })
