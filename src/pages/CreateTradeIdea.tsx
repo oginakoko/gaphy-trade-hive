@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import MediaSelector from '@/components/trade-ideas/MediaSelector';
 import MediaPreview from '@/components/trade-ideas/MediaPreview';
+import InlineMediaRenderer from '@/components/trade-ideas/InlineMediaRenderer';
 import { MediaItem } from '@/types/media';
 import { TradeIdea } from '@/types';
 
@@ -177,7 +178,6 @@ const CreateTradeIdea = () => {
   };
 
   const handleAddMediaClick = () => {
-    // Store current cursor position in the textarea
     if (textareaRef.current) {
       setCursorPosition(textareaRef.current.selectionStart);
     }
@@ -185,22 +185,19 @@ const CreateTradeIdea = () => {
   };
 
   const insertMediaPlaceholder = (item: MediaItem) => {
-    const mediaPlaceholder = `\n\n[MEDIA:${item.id}]\n\n`;
+    const uniqueId = `media_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const mediaPlaceholder = `\n\n[MEDIA:${uniqueId}]\n\n`;
     
-    // Insert the placeholder at the stored cursor position
     const newBreakdown = breakdown.slice(0, cursorPosition) + mediaPlaceholder + breakdown.slice(cursorPosition);
     setBreakdown(newBreakdown);
     
-    // Add the media item to our collection
-    setMediaItems(prev => [...prev, { ...item, id: Date.now().toString() }]);
+    setMediaItems(prev => [...prev, { ...item, id: uniqueId }]);
     setShowMediaSelector(false);
   };
 
   const removeMediaItem = (id: string) => {
-    // Remove the media item
     setMediaItems(prev => prev.filter(item => item.id !== id));
     
-    // Remove the placeholder from the text
     const placeholderRegex = new RegExp(`\\n\\n\\[MEDIA:${id}\\]\\n\\n`, 'g');
     setBreakdown(prev => prev.replace(placeholderRegex, ''));
   };
@@ -217,19 +214,6 @@ const CreateTradeIdea = () => {
       [newItems[currentIndex], newItems[newIndex]] = [newItems[newIndex], newItems[currentIndex]];
       return newItems;
     });
-  };
-
-  const getProcessedBreakdown = () => {
-    let processedText = breakdown;
-    mediaItems.forEach(item => {
-      const placeholder = `[MEDIA:${item.id}]`;
-      const mediaHtml = `<div class="media-item" data-id="${item.id}">
-        <strong>${item.title || 'Media'}</strong>
-        ${item.description ? `<p>${item.description}</p>` : ''}
-      </div>`;
-      processedText = processedText.replace(placeholder, mediaHtml);
-    });
-    return processedText;
   };
 
   return (
@@ -249,110 +233,152 @@ const CreateTradeIdea = () => {
               <h1 className="text-3xl font-bold text-white">Create Trade Idea</h1>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="glass-card p-6 space-y-4">
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    Title *
-                  </label>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g., BTC Long Opportunity"
-                    className="glass-input"
-                    required
-                  />
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Form Section */}
+              <div className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="glass-card p-6 space-y-4">
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">
+                        Title *
+                      </label>
+                      <Input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., BTC Long Opportunity"
+                        className="glass-input"
+                        required
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    Instrument *
-                  </label>
-                  <Input
-                    value={instrument}
-                    onChange={(e) => setInstrument(e.target.value)}
-                    placeholder="e.g., BTCUSD"
-                    className="glass-input"
-                    required
-                  />
-                </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">
+                        Instrument *
+                      </label>
+                      <Input
+                        value={instrument}
+                        onChange={(e) => setInstrument(e.target.value)}
+                        placeholder="e.g., BTCUSD"
+                        className="glass-input"
+                        required
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2 flex items-center justify-between">
-                    Analysis *
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2 flex items-center justify-between">
+                        Analysis *
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAddMediaClick}
+                          className="bg-brand-green text-black hover:bg-brand-green/80"
+                        >
+                          <Plus size={14} className="mr-1" />
+                          Insert Media
+                        </Button>
+                      </label>
+                      <Textarea
+                        ref={textareaRef}
+                        value={breakdown}
+                        onChange={(e) => setBreakdown(e.target.value)}
+                        placeholder="Detailed analysis of the trade idea... Click 'Insert Media' to add images, videos, or links at any position in your analysis."
+                        className="glass-input min-h-48"
+                        required
+                      />
+                      <p className="text-xs text-gray-400 mt-2">
+                        Tip: Position your cursor where you want to insert media, then click "Insert Media"
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">
+                        Tags
+                      </label>
+                      <Input
+                        value={tags}
+                        onChange={(e) => setTags(e.target.value)}
+                        placeholder="e.g., crypto, btc, long"
+                        className="glass-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
                     <Button
                       type="button"
-                      size="sm"
-                      onClick={handleAddMediaClick}
-                      className="bg-brand-green text-black hover:bg-brand-green/80"
+                      variant="outline"
+                      onClick={() => navigate(-1)}
+                      className="flex-1"
                     >
-                      <Plus size={14} className="mr-1" />
-                      Insert Media
+                      Cancel
                     </Button>
-                  </label>
-                  <Textarea
-                    ref={textareaRef}
-                    value={breakdown}
-                    onChange={(e) => setBreakdown(e.target.value)}
-                    placeholder="Detailed analysis of the trade idea... Click 'Insert Media' to add images, videos, or links at any position in your analysis."
-                    className="glass-input min-h-48"
-                    required
-                  />
-                  <p className="text-xs text-gray-400 mt-2">
-                    Tip: Position your cursor where you want to insert media, then click "Insert Media"
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    Tags
-                  </label>
-                  <Input
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                    placeholder="e.g., crypto, btc, long"
-                    className="glass-input"
-                  />
-                </div>
-              </div>
-
-              {mediaItems.length > 0 && (
-                <div className="glass-card p-6">
-                  <h3 className="text-xl font-bold text-white mb-4">Added Media</h3>
-                  <div className="space-y-4">
-                    {mediaItems.map((item, index) => (
-                      <MediaPreview
-                        key={item.id}
-                        item={item}
-                        index={index}
-                        onRemove={removeMediaItem}
-                        onMove={moveMediaItem}
-                        totalItems={mediaItems.length}
-                      />
-                    ))}
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="flex-1 bg-brand-green text-black hover:bg-brand-green/80"
+                    >
+                      <Save size={16} className="mr-2" />
+                      {createMutation.isPending ? 'Creating...' : 'Create Trade Idea'}
+                    </Button>
                   </div>
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(-1)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="flex-1 bg-brand-green text-black hover:bg-brand-green/80"
-                >
-                  <Save size={16} className="mr-2" />
-                  {createMutation.isPending ? 'Creating...' : 'Create Trade Idea'}
-                </Button>
+                </form>
               </div>
-            </form>
+
+              {/* Preview Section */}
+              <div className="space-y-6">
+                <div className="glass-card p-6">
+                  <h3 className="text-xl font-bold text-white mb-4">Preview</h3>
+                  {title && (
+                    <div className="mb-4">
+                      <h4 className="text-lg font-semibold text-white">{title}</h4>
+                      {instrument && (
+                        <p className="text-brand-green text-sm">{instrument}</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {breakdown && (
+                    <div className="text-gray-300">
+                      <InlineMediaRenderer 
+                        content={breakdown} 
+                        mediaItems={mediaItems} 
+                      />
+                    </div>
+                  )}
+                  
+                  {tags && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {tags.split(',').map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-brand-green/20 text-brand-green text-xs rounded"
+                        >
+                          {tag.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {mediaItems.length > 0 && (
+                  <div className="glass-card p-6">
+                    <h3 className="text-xl font-bold text-white mb-4">Media Manager</h3>
+                    <div className="space-y-4">
+                      {mediaItems.map((item, index) => (
+                        <MediaPreview
+                          key={item.id}
+                          item={item}
+                          index={index}
+                          onRemove={removeMediaItem}
+                          onMove={moveMediaItem}
+                          totalItems={mediaItems.length}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
