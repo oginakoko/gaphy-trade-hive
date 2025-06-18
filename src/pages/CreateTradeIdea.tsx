@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ const CreateTradeIdea = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const [title, setTitle] = useState('');
   const [instrument, setInstrument] = useState('');
@@ -26,6 +27,7 @@ const CreateTradeIdea = () => {
   const [tags, setTags] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [showMediaSelector, setShowMediaSelector] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
 
   const createMutation = useMutation({
     mutationFn: async (data: {
@@ -174,13 +176,33 @@ const CreateTradeIdea = () => {
     });
   };
 
-  const addMediaItem = (item: MediaItem) => {
+  const handleAddMediaClick = () => {
+    // Store current cursor position in the textarea
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+    setShowMediaSelector(true);
+  };
+
+  const insertMediaPlaceholder = (item: MediaItem) => {
+    const mediaPlaceholder = `\n\n[MEDIA:${item.id}]\n\n`;
+    
+    // Insert the placeholder at the stored cursor position
+    const newBreakdown = breakdown.slice(0, cursorPosition) + mediaPlaceholder + breakdown.slice(cursorPosition);
+    setBreakdown(newBreakdown);
+    
+    // Add the media item to our collection
     setMediaItems(prev => [...prev, { ...item, id: Date.now().toString() }]);
     setShowMediaSelector(false);
   };
 
   const removeMediaItem = (id: string) => {
+    // Remove the media item
     setMediaItems(prev => prev.filter(item => item.id !== id));
+    
+    // Remove the placeholder from the text
+    const placeholderRegex = new RegExp(`\\n\\n\\[MEDIA:${id}\\]\\n\\n`, 'g');
+    setBreakdown(prev => prev.replace(placeholderRegex, ''));
   };
 
   const moveMediaItem = (id: string, direction: 'up' | 'down') => {
@@ -195,6 +217,19 @@ const CreateTradeIdea = () => {
       [newItems[currentIndex], newItems[newIndex]] = [newItems[newIndex], newItems[currentIndex]];
       return newItems;
     });
+  };
+
+  const getProcessedBreakdown = () => {
+    let processedText = breakdown;
+    mediaItems.forEach(item => {
+      const placeholder = `[MEDIA:${item.id}]`;
+      const mediaHtml = `<div class="media-item" data-id="${item.id}">
+        <strong>${item.title || 'Media'}</strong>
+        ${item.description ? `<p>${item.description}</p>` : ''}
+      </div>`;
+      processedText = processedText.replace(placeholder, mediaHtml);
+    });
+    return processedText;
   };
 
   return (
@@ -243,16 +278,29 @@ const CreateTradeIdea = () => {
                 </div>
 
                 <div>
-                  <label className="block text-white text-sm font-medium mb-2">
+                  <label className="block text-white text-sm font-medium mb-2 flex items-center justify-between">
                     Analysis *
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddMediaClick}
+                      className="bg-brand-green text-black hover:bg-brand-green/80"
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Insert Media
+                    </Button>
                   </label>
                   <Textarea
+                    ref={textareaRef}
                     value={breakdown}
                     onChange={(e) => setBreakdown(e.target.value)}
-                    placeholder="Detailed analysis of the trade idea..."
-                    className="glass-input min-h-32"
+                    placeholder="Detailed analysis of the trade idea... Click 'Insert Media' to add images, videos, or links at any position in your analysis."
+                    className="glass-input min-h-48"
                     required
                   />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Tip: Position your cursor where you want to insert media, then click "Insert Media"
+                  </p>
                 </div>
 
                 <div>
@@ -268,20 +316,9 @@ const CreateTradeIdea = () => {
                 </div>
               </div>
 
-              <div className="glass-card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-white">Media Content</h3>
-                  <Button
-                    type="button"
-                    onClick={() => setShowMediaSelector(true)}
-                    className="bg-brand-green text-black hover:bg-brand-green/80"
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Add Media
-                  </Button>
-                </div>
-
-                {mediaItems.length > 0 && (
+              {mediaItems.length > 0 && (
+                <div className="glass-card p-6">
+                  <h3 className="text-xl font-bold text-white mb-4">Added Media</h3>
                   <div className="space-y-4">
                     {mediaItems.map((item, index) => (
                       <MediaPreview
@@ -294,14 +331,8 @@ const CreateTradeIdea = () => {
                       />
                     ))}
                   </div>
-                )}
-
-                {mediaItems.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <p>No media added yet. Click "Add Media" to get started.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <Button
@@ -327,7 +358,7 @@ const CreateTradeIdea = () => {
 
         {showMediaSelector && (
           <MediaSelector
-            onAdd={addMediaItem}
+            onAdd={insertMediaPlaceholder}
             onClose={() => setShowMediaSelector(false)}
           />
         )}
