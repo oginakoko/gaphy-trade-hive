@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ServerMessage } from '@/types/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,13 +12,14 @@ import { toast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useServerMembers } from '@/hooks/useServerMembers';
+import MessageContent from './MessageContent';
 
 interface ServerMessageItemProps {
   msg: ServerMessage;
   onDelete: (messageId: string) => void;
   serverOwnerId: string;
   onReply: (message: ServerMessage) => void;
-  serverId: string;  // Added serverId prop
+  serverId: string;
 }
 
 const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply, serverId }: ServerMessageItemProps) => {
@@ -70,22 +72,6 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply, serverId }: 
         setIsEditing(false);
     }
   };
-
-  const renderMessageContent = (content: string) => {
-    const mentionRegex = /@(\w+)/g;
-    const parts = content.split(mentionRegex);
-
-    return parts.map((part, index) => {
-        if (index % 2 === 1) {
-            return (
-                <span key={index} className="text-brand-green font-semibold bg-brand-green/10 px-1 rounded mx-0.5">
-                    @{part}
-                </span>
-            );
-        }
-        return part;
-    });
-};
 
   const handleQuotedClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -148,7 +134,7 @@ const ServerMessageItem = ({ msg, onDelete, serverOwnerId, onReply, serverId }: 
         ) : (
           <>
             {msg.content && (
-              <p className="text-gray-300 text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>
+              <MessageContent content={msg.content} />
             )}
             {msg.media_url && (
               <div className="mt-2">
