@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
@@ -18,7 +17,8 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer"
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Gem, Home, Lightbulb, LogOut, Menu, Settings, User, Users } from 'lucide-react';
+import { ChevronDown, Gem, Home, Lightbulb, LogOut, Menu, MessageCircle, Settings, User, Users } from 'lucide-react';
+import { MessagesDialog } from '@/components/messages/MessagesDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { Skeleton } from '@/components/ui/skeleton';
 import NotificationsBell from './NotificationsBell';
@@ -58,10 +58,13 @@ const Header = () => {
             Servers
           </Link>
           {session && (
-            <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
+            <>
+              <MessagesDialog />
+              <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
                 <User className="mr-2 h-4 w-4" />
                 Profile
-            </Link>
+              </Link>
+            </>
           )}
         </nav>
 
@@ -146,10 +149,15 @@ const Header = () => {
                           Servers
                       </Link>
                       {session && (
+                        <>
+                          <div className="px-4">
+                            <MessagesDialog />
+                          </div>
                           <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-lg text-gray-300 hover:text-white transition-colors flex items-center">
                               <User className="mr-3 h-5 w-5" />
                               Profile
                           </Link>
+                        </>
                       )}
                       {!session && (
                           <Link to="/auth" onClick={() => setIsMobileMenuOpen(false)}>
@@ -167,3 +175,4 @@ const Header = () => {
 };
 
 export default Header;
+

@@ -25,6 +25,7 @@ import ManageApiKeys from "./pages/admin/ManageApiKeys";
 import Servers from "./pages/Servers";
 import ShortlinkRedirect from "./pages/ShortlinkRedirect";
 import CreateTradeIdea from "./pages/CreateTradeIdea";
+import Support from "./pages/Support";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/servers/:serverId" element={<Servers />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/create-ad" element={<CreateAd />} />
+                <Route path="/support" element={<Support />} />
               </Route>
 
               {/* Admin-only routes */}

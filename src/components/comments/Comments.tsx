@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import CommentCard from './CommentCard';
 import CommentForm from './CommentForm';
 
-const fetchComments = async (tradeIdeaId: string): Promise<Comment[]> => {
+const fetchComments = async (tradeIdeaId: string | number): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select('*, profiles(username, avatar_url)')

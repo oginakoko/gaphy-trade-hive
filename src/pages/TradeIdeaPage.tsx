@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -14,6 +14,8 @@ import Comments from '@/components/comments/Comments';
 import { useAuth } from '@/hooks/useAuth';
 import LikeButton from '@/components/trade-ideas/LikeButton';
 import InlineMediaRenderer from '@/components/trade-ideas/InlineMediaRenderer';
+import { useTradeTracking } from '@/hooks/useTradeTracking';
+import { TradeTrackingTable } from '@/components/trade-ideas/TradeTrackingTable';
 
 interface ExtendedTradeIdea extends TradeIdea {
   media: MediaItem[];
@@ -62,6 +64,11 @@ const fetchTradeIdea = async (id: string): Promise<ExtendedTradeIdea> => {
 const TradeIdeaPage = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const {
+    trades,
+    isLoading: isLoadingTrades,
+    analyzeTrade
+  } = useTradeTracking(id);
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ['tradeIdea', id],
@@ -85,10 +92,47 @@ const TradeIdeaPage = () => {
     enabled: !!user && !!id,
   });
 
+  // Analyze trade on load
+  useEffect(() => {
+    if (idea?.breakdown && !trades?.length) {
+      analyzeTrade(idea.breakdown);
+    }
+  }, [idea?.breakdown, trades?.length]);
+
   const authorName = idea?.profiles?.username || 'Anonymous';
   const authorAvatar = idea?.profiles?.avatar_url || '/placeholder.svg';
 
   console.log('Rendering trade idea:', idea);
+
+  if (isLoading || isLoadingTrades) {
+    return (
+      <>
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="space-y-4 animate-pulse">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  if (error || !idea) {
+    return (
+      <>
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl text-red-500">Error loading trade idea</h1>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -98,81 +142,40 @@ const TradeIdeaPage = () => {
           <Button asChild variant="ghost" className="mb-4 -ml-4">
             <Link to="/analysis" className="flex items-center gap-2 text-brand-green hover:text-brand-green/80">
               <ArrowLeft size={16} />
-              Back to all ideas
+              Back to Analysis
             </Link>
           </Button>
 
-          {isLoading && (
-            <div className="glass-card rounded-xl p-8">
-              <Skeleton className="h-8 w-3/4 mb-4" />
-              <Skeleton className="h-4 w-1/4 mb-8" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          )}
-          {error && (
-            <p className="text-center text-red-500 p-8 glass-card">
-              Error loading trade idea: {(error as Error).message}
-            </p>
-          )}
-          {idea && (
-            <>
-              <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
-                {idea.image_url && (
-                  <img
-                    src={idea.image_url}
-                    alt={idea.title}
-                    className="w-full h-auto max-h-[500px] object-cover"
+          <div className="space-y-8">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <img src={authorAvatar} alt={authorName} className="h-12 w-12 rounded-full" />
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">{idea.title}</h1>
+                    <p className="text-brand-green">{idea.instrument}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <LikeButton 
+                    tradeIdeaId={idea.id} 
+                    initialLikesCount={idea.likes?.[0]?.count || 0}
+                    initialIsLiked={!!userHasLiked}
                   />
-                )}
-                <div className="p-6 md:p-10">
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={authorAvatar}
-                        alt={authorName}
-                        className="h-10 w-10 rounded-full bg-brand-gray-200 object-cover"
-                      />
-                      <div>
-                        <p className="font-bold text-white">{authorName}</p>
-                        <p className="text-sm text-brand-green">{idea.instrument}</p>
-                      </div>
-                    </div>
-                    {!isLoadingUserLike && id && (
-                      <LikeButton
-                        tradeIdeaId={id}
-                        initialLikesCount={idea.likes?.[0]?.count || 0}
-                        initialIsLiked={!!userHasLiked}
-                      />
-                    )}
-                  </div>
-                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-200 mb-6">
-                    {idea.title}
-                  </h1>
-                  <div className="prose prose-lg prose-invert max-w-none space-y-4">
-                    <InlineMediaRenderer
-                      content={idea.breakdown}
-                      mediaItems={idea.media}
-                    />
-                  </div>
-                  {idea.tags && idea.tags.length > 0 && (
-                    <div className="flex gap-2 flex-wrap mt-8">
-                      {idea.tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="bg-brand-gray-200 text-gray-300 text-xs font-medium px-3 py-1.5 rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
-              <div className="mt-8">
-                <Comments tradeIdeaId={idea.id} />
+
+              <div className="prose prose-invert max-w-none">
+                <InlineMediaRenderer content={idea.breakdown} mediaItems={idea.media || []} />
               </div>
-            </>
-          )}
+
+              {trades && trades.length > 0 && (
+                <TradeTrackingTable trades={trades} />
+              )}
+
+              <Comments tradeIdeaId={Number(idea.id)} />
+            </div>
+          </div>
         </div>
       </main>
     </>

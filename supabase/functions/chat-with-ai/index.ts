@@ -4,6 +4,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+  'Access-Control-Expose-Headers': '*'
 }
 
 const OPENROUTER_API_KEY_SECRET = 'OPENROUTER_API_KEY'
@@ -18,10 +21,13 @@ Deno.serve(async (req) => {
     console.log('=== [chat-with-ai] Edge Function Start (OpenRouter) ===')
     console.log('Request method:', req.method, 'URL:', req.url)
 
-    // CORS preflight
+    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
       console.log('[chat-with-ai] OPTIONS preflight hit')
-      return new Response('ok', { headers: corsHeaders })
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      })
     }
 
     // Try to parse body
@@ -46,10 +52,16 @@ Deno.serve(async (req) => {
     const openRouterApiKey = Deno.env.get(OPENROUTER_API_KEY_SECRET)
     if (!openRouterApiKey) {
         console.error('[chat-with-ai] OpenRouter API key not found in environment variables.')
-        return new Response(JSON.stringify({
-            error: 'AI service not configured. Ask admin to add OpenRouter API key.',
+        return new Response(
+          JSON.stringify({
+            error: 'AI service not configured. Please check the environment configuration.',
             type: 'not_configured'
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 })
+          }), 
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 503  // Service Unavailable
+          }
+        )
     }
 
     // Prepare for OpenRouter API
@@ -58,7 +70,7 @@ Deno.serve(async (req) => {
     // Format messages for OpenRouter
     const systemPrompt: ChatMessage = {
         role: 'system',
-        content: "You are AlphaFinder, an expert trading assistant for the GaphyHive platform. Your goal is to provide insightful, concise, and helpful analysis on financial markets and trade ideas. Your persona is professional, but friendly and approachable. Keep your answers short and to the point. Do not provide financial advice. ALWAYS include a disclaimer at the end of your response that your analysis is for educational and informational purposes only and does not constitute financial advice."
+        content: "You are AlphaFinder, an expert trading assistant for the GaphyHive platform. Focus on extracting and analyzing explicit trade data (entries, exits, targets). If no explicit numbers are found, provide helpful general context. Keep responses concise and professional. Always add disclaimer: 'Note: This analysis is for educational purposes only and does not constitute financial advice.'"
     }
 
     const userMessages: ChatMessage[] = messages.map((msg: { sender: string; text: string }) => ({
