@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -26,8 +25,8 @@ const Analysis = () => {
   const [editingIdea, setEditingIdea] = useState<TradeIdea | null>(null);
 
   const handleNew = () => {
-    setEditingIdea(null);
-    setFormOpen(true);
+    // Navigate to full page instead of opening modal
+    window.location.href = '/create-trade-idea';
   };
   
   const handleEdit = (idea: TradeIdea) => {
@@ -72,10 +71,11 @@ const Analysis = () => {
         </div>
       </main>
 
+      {/* Keep the edit modal for existing trade ideas */}
       <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="glass-card border-brand-green/20 sm:max-w-2xl">
             <DialogHeader>
-                <DialogTitle className="text-white">{editingIdea ? 'Edit' : 'Create a New'} Trade Idea</DialogTitle>
+                <DialogTitle className="text-white">Edit Trade Idea</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
                 <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />

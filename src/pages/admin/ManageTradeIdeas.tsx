@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -84,8 +83,7 @@ const ManageTradeIdeasPage = () => {
     });
 
     const handleNew = () => {
-        setEditingIdea(null);
-        setFormOpen(true);
+        navigate('/create-trade-idea');
     };
 
     const handleEdit = (idea: TradeIdea) => {

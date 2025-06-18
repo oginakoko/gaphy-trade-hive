@@ -493,6 +493,50 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_idea_media: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          media_type: string
+          position: number
+          thumbnail_url: string | null
+          title: string | null
+          trade_idea_id: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          media_type: string
+          position?: number
+          thumbnail_url?: string | null
+          title?: string | null
+          trade_idea_id: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          media_type?: string
+          position?: number
+          thumbnail_url?: string | null
+          title?: string | null
+          trade_idea_id?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_trade_idea_media_trade_idea"
+            columns: ["trade_idea_id"]
+            isOneToOne: false
+            referencedRelation: "trade_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_ideas: {
         Row: {
           breakdown: string | null
