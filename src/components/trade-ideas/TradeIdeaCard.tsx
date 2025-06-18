@@ -1,4 +1,3 @@
-
 import { TradeIdea } from '@/types';
 import { ArrowUpRight, Edit, Share } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,9 +7,10 @@ import LikeButton from './LikeButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useState } from 'react';
+import { MediaItem } from '@/types/media';
 
 interface TradeIdeaCardProps {
-  idea: TradeIdea;
+  idea: TradeIdea & { media?: MediaItem[] };
   likesCount: number;
   userHasLiked: boolean;
   isAdmin: boolean;
@@ -22,9 +22,18 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
   
-  const snippet = idea.breakdown.trim().length > 70 
-    ? idea.breakdown.trim().substring(0, 70) + '...' 
-    : idea.breakdown.trim();
+  // Get the first image from media items or fallback to image_url
+  const firstImage = idea.media?.find(m => m.type === 'image')?.url || idea.image_url;
+
+  // Clean the breakdown text by removing media placeholders and normalizing markdown
+  const cleanBreakdown = idea.breakdown
+    .replace(/\[MEDIA:[^\]]+\]/g, '') // Remove media placeholders
+    .trim()
+    .split('\n')[0]; // Take first paragraph
+
+  const snippet = cleanBreakdown.length > 120 
+    ? cleanBreakdown.substring(0, 120) + '...' 
+    : cleanBreakdown;
 
   const handleSharePost = async (postId: string | number, title: string) => {
     const shareUrl = `${window.location.origin}/trade-ideas/${postId}`;
@@ -68,48 +77,51 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
         )}
       </div>
       
-      {idea.image_url && 
-        <Link to={`/trade-ideas/${idea.id}`} className="block">
-          <img src={idea.image_url} alt={idea.title} className="w-full h-20 object-cover" />
-        </Link>
-      }
-      <div className="p-3 flex flex-col flex-grow">
-          <div className="flex items-center gap-2 mb-2">
-          <img src={authorAvatar} alt={authorName} className="h-6 w-6 rounded-full bg-brand-gray-200 object-cover" />
-          <div>
-              <p className="font-bold text-white text-sm">{authorName}</p>
-              <p className="text-xs text-brand-green">{idea.instrument}</p>
+      <Link to={`/trade-ideas/${idea.id}`} className="block">
+        <div className="relative">
+          {firstImage ? (
+            <img 
+              src={firstImage} 
+              alt={idea.title} 
+              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-48 bg-brand-gray-200/20 flex items-center justify-center">
+              <ArrowUpRight size={24} className="text-gray-400" />
+            </div>
+          )}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <h3 className="text-lg font-bold text-white group-hover:text-brand-green transition-colors line-clamp-2">
+              {idea.title}
+            </h3>
           </div>
-          </div>
-          <h3 className="text-sm font-bold text-gray-300 mb-2 group-hover:text-white transition-colors">
-            <Link to={`/trade-ideas/${idea.id}`} className="hover:text-white transition-colors">{idea.title}</Link>
-          </h3>
-          <div className="text-xs text-gray-400 mb-2 flex-grow max-w-none overflow-hidden">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {snippet}
-            </ReactMarkdown>
-          </div>
+        </div>
+      </Link>
 
-          <div className="flex items-center justify-between text-gray-400 mt-auto pt-2 border-t border-white/10">
-              <div className="flex items-center gap-2">
-                  <LikeButton
-                      tradeIdeaId={idea.id}
-                      initialLikesCount={likesCount}
-                      initialIsLiked={userHasLiked}
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                      {idea.tags?.slice(0, 2).map(tag => (
-                      <span key={tag} className="bg-brand-gray-200 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
-                          {tag}
-                      </span>
-                      ))}
-                  </div>
-              </div>
-              <Link to={`/trade-ideas/${idea.id}`} className="flex items-center gap-1 text-brand-green text-xs">
-                  Read More
-                  <ArrowUpRight size={14} className="transform transition-transform duration-300 group-hover:rotate-45" />
-              </Link>
+      <div className="p-3 flex flex-col flex-grow">
+        <div className="flex items-center gap-2 mb-2">
+          <img src={authorAvatar} alt={authorName} className="h-6 w-6 rounded-full bg-brand-gray-200 object-cover" />
+          <div className="flex-grow">
+            <p className="font-bold text-white text-sm">{authorName}</p>
+            <p className="text-xs text-brand-green">{idea.instrument}</p>
           </div>
+          <LikeButton 
+            tradeIdeaId={idea.id} 
+            initialLikesCount={likesCount} 
+            initialIsLiked={userHasLiked}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-gray-400 mt-auto pt-2 border-t border-white/10">
+          <div className="flex items-center gap-2 text-xs">
+            {idea.tags?.map((tag, index) => (
+              <span key={index} className="text-brand-green">#{tag}</span>
+            ))}
+          </div>
+          <span className="text-xs">
+            {new Date(idea.created_at).toLocaleDateString()}
+          </span>
+        </div>
       </div>
     </div>
   );

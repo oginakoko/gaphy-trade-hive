@@ -5,7 +5,7 @@ import { TradeIdea, Ad, AffiliateLink } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
-    const { data, error } = await supabase
+    const { data: ideas, error } = await supabase
         .from('trade_ideas')
         .select('*, profiles(username, avatar_url), likes(count)')
         .order('created_at', { ascending: false });
@@ -13,7 +13,40 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     if (error) {
         throw new Error(error.message);
     }
-    return data as TradeIdea[];
+
+    // Fetch media for all trade ideas
+    const { data: mediaItems, error: mediaError } = await supabase
+        .from('trade_idea_media')
+        .select('*')
+        .in('trade_idea_id', ideas.map(idea => idea.id))
+        .order('position');
+
+    if (mediaError) {
+        console.error('Error fetching media:', mediaError);
+        return ideas;
+    }
+
+    // Group media by trade idea ID
+    const mediaByIdeaId = mediaItems.reduce((acc, media) => {
+        if (!acc[media.trade_idea_id]) {
+            acc[media.trade_idea_id] = [];
+        }
+        acc[media.trade_idea_id].push({
+            id: media.placeholder_id || media.id.toString(),
+            type: media.media_type,
+            url: media.url,
+            title: media.title,
+            description: media.description,
+            thumbnail_url: media.thumbnail_url
+        });
+        return acc;
+    }, {} as Record<number, any[]>);
+
+    // Attach media to each trade idea
+    return ideas.map(idea => ({
+        ...idea,
+        media: mediaByIdeaId[idea.id] || []
+    }));
 };
 
 const fetchApprovedAds = async (): Promise<Ad[]> => {
@@ -64,18 +97,23 @@ export const useAnalysisFeed = () => {
     const { data: userLikesData } = useQuery({
         queryKey: ['userLikes', user?.id],
         queryFn: async () => {
-            if (!user) return [];
+            if (!user) return new Set<number>();
             const { data, error } = await supabase
                 .from('likes')
                 .select('trade_idea_id')
                 .eq('user_id', user.id);
-            if (error) throw error;
-            return data.map((like) => like.trade_idea_id);
+            if (error) {
+                console.error('Error fetching user likes:', error);
+                throw error;
+            }
+            return new Set(data.map(like => Number(like.trade_idea_id)));
         },
         enabled: !!user,
+        initialData: new Set<number>()
     });
 
-    const userLikes = new Set<number>(userLikesData);
+    // Convert userLikesData to a Set if it isn't already one
+    const userLikes = userLikesData instanceof Set ? userLikesData : new Set(userLikesData);
 
     const feed = useMemo((): FeedItem[] => {
         const ideas: (TradeIdea & { viewType: 'idea' })[] = (tradeIdeas || []).map(idea => ({ ...idea, viewType: 'idea' }));

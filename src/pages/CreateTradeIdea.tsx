@@ -1,20 +1,19 @@
-
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabaseClient';
+import { MediaItem } from '@/types/media';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Plus, Save, X } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
-import { toast } from '@/components/ui/use-toast';
 import MediaSelector from '@/components/trade-ideas/MediaSelector';
 import MediaPreview from '@/components/trade-ideas/MediaPreview';
 import InlineMediaRenderer from '@/components/trade-ideas/InlineMediaRenderer';
-import { MediaItem } from '@/types/media';
-import { TradeIdea } from '@/types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const CreateTradeIdea = () => {
   const navigate = useNavigate();
@@ -30,6 +29,37 @@ const CreateTradeIdea = () => {
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
 
+  // Map of placeholder IDs to database IDs for updating content after save
+  const [mediaIdMap, setMediaIdMap] = useState<Record<string, string>>({});
+
+  const handleAddMediaClick = () => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+    setShowMediaSelector(true);
+  };
+
+  const insertMediaPlaceholder = (item: MediaItem) => {
+    const uniqueId = Date.now().toString();
+    const mediaItem = { ...item, id: uniqueId };
+    const mediaPlaceholder = `\n[MEDIA:${uniqueId}]\n`;
+    
+    const newBreakdown = breakdown.slice(0, cursorPosition) + mediaPlaceholder + breakdown.slice(cursorPosition);
+    setBreakdown(newBreakdown);
+    setMediaItems(prev => [...prev, mediaItem]);
+    setShowMediaSelector(false);
+
+    console.log('Added media item:', mediaItem);
+    console.log('Current media items:', [...mediaItems, mediaItem]);
+    console.log('Current breakdown:', newBreakdown);
+  };
+
+  const removeMediaItem = (id: string) => {
+    setMediaItems(prev => prev.filter(item => item.id !== id));
+    const placeholderRegex = new RegExp(`\\[MEDIA:${id}\\]`, 'g');
+    setBreakdown(prev => prev.replace(placeholderRegex, ''));
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: {
       title: string;
@@ -38,31 +68,16 @@ const CreateTradeIdea = () => {
       tags: string[];
       mediaItems: MediaItem[];
     }) => {
+      console.log('Submitting data:', data);
+
       if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
         throw new Error("You are not authorized to perform this action.");
       }
 
-      // Ensure profile exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        throw new Error(`Failed to check for profile: ${profileError.message}`);
-      }
-      
-      if (!profile) {
-        const newUsername = user.email?.split('@')[0] || `user_${user.id.substring(0, 4)}`;
-        const { error: createProfileError } = await supabase
-          .from('profiles')
-          .insert({ id: user.id, username: newUsername });
-        
-        if (createProfileError) {
-          throw new Error(`Failed to create user profile: ${createProfileError.message}`);
-        }
-      }
+      // Find first media item for thumbnail
+      let thumbnailUrl = '';
+      const firstMediaItem = data.mediaItems.find(item => item.type === 'image') || 
+                           data.mediaItems.find(item => item.type === 'video');
 
       // Create the trade idea
       const { data: tradeIdea, error: tradeIdeaError } = await supabase
@@ -73,66 +88,80 @@ const CreateTradeIdea = () => {
           breakdown: data.breakdown,
           tags: data.tags,
           user_id: user.id,
+          image_url: thumbnailUrl || null,
         }])
         .select()
         .single();
 
-      if (tradeIdeaError) throw new Error(tradeIdeaError.message);
+      if (tradeIdeaError) {
+        console.error('Error creating trade idea:', tradeIdeaError);
+        throw new Error(tradeIdeaError.message);
+      }
+
+      console.log('Created trade idea:', tradeIdea);
 
       // Process and upload media items
       for (let i = 0; i < data.mediaItems.length; i++) {
         const item = data.mediaItems[i];
         let finalUrl = item.url;
 
-        // Upload files to appropriate buckets
-        if (item.file && item.type === 'image') {
+        if (item.file) {
+          // Upload file to appropriate bucket
+          const bucket = item.type === 'image' ? 'trade-images' : 'trade-videos';
           const fileExt = item.file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
           const filePath = `public/${user.id}-${fileName}`;
 
           const { error: uploadError } = await supabase.storage
-            .from('trade-images')
+            .from(bucket)
             .upload(filePath, item.file);
 
-          if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.error('Error uploading file:', uploadError);
+            throw uploadError;
+          }
 
           const { data: urlData } = supabase.storage
-            .from('trade-images')
-            .getPublicUrl(filePath);
-
-          finalUrl = urlData.publicUrl;
-        } else if (item.file && item.type === 'video') {
-          const fileExt = item.file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-          const filePath = `${user.id}/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('trade-videos')
-            .upload(filePath, item.file);
-
-          if (uploadError) throw uploadError;
-
-          const { data: urlData } = supabase.storage
-            .from('trade-videos')
+            .from(bucket)
             .getPublicUrl(filePath);
 
           finalUrl = urlData.publicUrl;
         }
 
-        // Save media item to database
+        // If this is the first media item and no thumbnail set yet, use it
+        if (i === 0 && finalUrl) {
+          thumbnailUrl = item.type === 'video' ? (item.thumbnail_url || '') : finalUrl;
+          // Update the trade idea with the thumbnail
+          const { error: updateError } = await supabase
+            .from('trade_ideas')
+            .update({ image_url: thumbnailUrl })
+            .eq('id', tradeIdea.id);
+
+          if (updateError) throw updateError;
+        }
+
+        // Save media item
+        const mediaData = {
+          trade_idea_id: tradeIdea.id,
+          media_type: item.type,
+          url: finalUrl,
+          title: item.title || null,
+          description: item.description || null,
+          thumbnail_url: item.thumbnail_url || null,
+          position: i,
+          placeholder_id: item.id // Store the placeholder ID
+        };
+
+        console.log('Saving media item:', mediaData);
+
         const { error: mediaError } = await supabase
           .from('trade_idea_media')
-          .insert([{
-            trade_idea_id: tradeIdea.id,
-            media_type: item.type,
-            url: finalUrl,
-            title: item.title,
-            description: item.description,
-            thumbnail_url: item.thumbnail_url,
-            position: i,
-          }]);
+          .insert([mediaData]);
 
-        if (mediaError) throw new Error(mediaError.message);
+        if (mediaError) {
+          console.error('Error saving media item:', mediaError);
+          throw new Error(mediaError.message);
+        }
       }
 
       return tradeIdea;
@@ -140,9 +169,10 @@ const CreateTradeIdea = () => {
     onSuccess: () => {
       toast({ title: 'Success', description: 'Trade idea has been created.' });
       queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
-      navigate('/');
+      navigate('/analysis');
     },
     onError: (error: Error) => {
+      console.error('Error in mutation:', error);
       toast({
         title: 'Error creating trade idea',
         description: error.message,
@@ -168,6 +198,14 @@ const CreateTradeIdea = () => {
       .map(word => word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '')
       .join(' ');
 
+    console.log('Submitting:', {
+      title: capitalizedTitle,
+      instrument,
+      breakdown,
+      tags: tagsArray,
+      mediaItems,
+    });
+
     createMutation.mutate({
       title: capitalizedTitle,
       instrument,
@@ -177,218 +215,121 @@ const CreateTradeIdea = () => {
     });
   };
 
-  const handleAddMediaClick = () => {
-    if (textareaRef.current) {
-      setCursorPosition(textareaRef.current.selectionStart);
-    }
-    setShowMediaSelector(true);
-  };
-
-  const insertMediaPlaceholder = (item: MediaItem) => {
-    const uniqueId = `media_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const mediaPlaceholder = `\n\n[MEDIA:${uniqueId}]\n\n`;
-    
-    const newBreakdown = breakdown.slice(0, cursorPosition) + mediaPlaceholder + breakdown.slice(cursorPosition);
-    setBreakdown(newBreakdown);
-    
-    setMediaItems(prev => [...prev, { ...item, id: uniqueId }]);
-    setShowMediaSelector(false);
-  };
-
-  const removeMediaItem = (id: string) => {
-    setMediaItems(prev => prev.filter(item => item.id !== id));
-    
-    const placeholderRegex = new RegExp(`\\n\\n\\[MEDIA:${id}\\]\\n\\n`, 'g');
-    setBreakdown(prev => prev.replace(placeholderRegex, ''));
-  };
-
-  const moveMediaItem = (id: string, direction: 'up' | 'down') => {
-    setMediaItems(prev => {
-      const currentIndex = prev.findIndex(item => item.id === id);
-      if (currentIndex === -1) return prev;
-      
-      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
-      
-      const newItems = [...prev];
-      [newItems[currentIndex], newItems[newIndex]] = [newItems[newIndex], newItems[currentIndex]];
-      return newItems;
-    });
-  };
-
   return (
     <>
       <Header />
       <main className="min-h-screen bg-brand-dark">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-4 mb-8">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h1 className="text-3xl font-bold text-white">Create Trade Idea</h1>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Form Section */}
-              <div className="space-y-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="glass-card p-6 space-y-4">
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">
-                        Title *
-                      </label>
-                      <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g., BTC Long Opportunity"
-                        className="glass-input"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">
-                        Instrument *
-                      </label>
-                      <Input
-                        value={instrument}
-                        onChange={(e) => setInstrument(e.target.value)}
-                        placeholder="e.g., BTCUSD"
-                        className="glass-input"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2 flex items-center justify-between">
-                        Analysis *
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleAddMediaClick}
-                          className="bg-brand-green text-black hover:bg-brand-green/80"
-                        >
-                          <Plus size={14} className="mr-1" />
-                          Insert Media
-                        </Button>
-                      </label>
-                      <Textarea
-                        ref={textareaRef}
-                        value={breakdown}
-                        onChange={(e) => setBreakdown(e.target.value)}
-                        placeholder="Detailed analysis of the trade idea... Click 'Insert Media' to add images, videos, or links at any position in your analysis."
-                        className="glass-input min-h-48"
-                        required
-                      />
-                      <p className="text-xs text-gray-400 mt-2">
-                        Tip: Position your cursor where you want to insert media, then click "Insert Media"
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">
-                        Tags
-                      </label>
-                      <Input
-                        value={tags}
-                        onChange={(e) => setTags(e.target.value)}
-                        placeholder="e.g., crypto, btc, long"
-                        className="glass-input"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate(-1)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending}
-                      className="flex-1 bg-brand-green text-black hover:bg-brand-green/80"
-                    >
-                      <Save size={16} className="mr-2" />
-                      {createMutation.isPending ? 'Creating...' : 'Create Trade Idea'}
-                    </Button>
-                  </div>
-                </form>
+            <h1 className="text-3xl font-bold text-white mb-8">Create Trade Idea</h1>
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-200">Title</label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter a title for your trade idea"
+                  className="w-full"
+                  required
+                />
               </div>
 
-              {/* Preview Section */}
-              <div className="space-y-6">
-                <div className="glass-card p-6">
-                  <h3 className="text-xl font-bold text-white mb-4">Preview</h3>
-                  {title && (
-                    <div className="mb-4">
-                      <h4 className="text-lg font-semibold text-white">{title}</h4>
-                      {instrument && (
-                        <p className="text-brand-green text-sm">{instrument}</p>
-                      )}
-                    </div>
-                  )}
-                  
-                  {breakdown && (
-                    <div className="text-gray-300">
-                      <InlineMediaRenderer 
-                        content={breakdown} 
-                        mediaItems={mediaItems} 
-                      />
-                    </div>
-                  )}
-                  
-                  {tags && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {tags.split(',').map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-brand-green/20 text-brand-green text-xs rounded"
-                        >
-                          {tag.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-200">Instrument</label>
+                <Input
+                  value={instrument}
+                  onChange={(e) => setInstrument(e.target.value)}
+                  placeholder="Enter the trading instrument (e.g., BTC/USD)"
+                  className="w-full"
+                  required
+                />
+              </div>
 
-                {mediaItems.length > 0 && (
-                  <div className="glass-card p-6">
-                    <h3 className="text-xl font-bold text-white mb-4">Media Manager</h3>
-                    <div className="space-y-4">
-                      {mediaItems.map((item, index) => (
-                        <MediaPreview
-                          key={item.id}
-                          item={item}
-                          index={index}
-                          onRemove={removeMediaItem}
-                          onMove={moveMediaItem}
-                          totalItems={mediaItems.length}
-                        />
-                      ))}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-200">Analysis Breakdown</label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddMediaClick}
+                  >
+                    Insert Media
+                  </Button>
+                </div>
+                <Textarea
+                  ref={textareaRef}
+                  value={breakdown}
+                  onChange={(e) => setBreakdown(e.target.value)}
+                  placeholder="Write your analysis here..."
+                  className="min-h-[300px] w-full"
+                  required
+                />
+                
+                {/* Live Preview */}
+                {breakdown && (
+                  <div className="mt-4 p-4 rounded-lg bg-brand-gray-200/10">
+                    <h3 className="text-sm font-medium text-gray-300 mb-2">Preview:</h3>
+                    <div className="prose prose-invert max-w-none">
+                      <InlineMediaRenderer
+                        content={breakdown}
+                        mediaItems={mediaItems}
+                      />
                     </div>
                   </div>
                 )}
               </div>
-            </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-200">Tags</label>
+                <Input
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="Enter tags separated by commas"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Media Items Preview */}
+              {mediaItems.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white">Added Media</h3>
+                  <div className="space-y-4">
+                    {mediaItems.map((item, index) => (
+                      <MediaPreview
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        onRemove={removeMediaItem}
+                        onMove={() => {}} // We'll implement this later if needed
+                        totalItems={mediaItems.length}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-6">
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {createMutation.isPending ? 'Creating...' : 'Create Trade Idea'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
-
-        {showMediaSelector && (
-          <MediaSelector
-            onAdd={insertMediaPlaceholder}
-            onClose={() => setShowMediaSelector(false)}
-          />
-        )}
       </main>
+
+      {showMediaSelector && (
+        <MediaSelector
+          onAdd={insertMediaPlaceholder}
+          onClose={() => setShowMediaSelector(false)}
+        />
+      )}
     </>
   );
 };

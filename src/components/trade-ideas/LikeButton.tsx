@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -17,18 +16,21 @@ interface LikeButtonProps {
 const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButtonProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
-  const [likesCount, setLikesCount] = useState(initialLikesCount);
-  const [isLiked, setIsLiked] = useState(initialIsLiked);
+  const [optimisticLiked, setOptimisticLiked] = useState(initialIsLiked);
+  const [optimisticCount, setOptimisticCount] = useState(initialLikesCount);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    setLikesCount(initialLikesCount);
-    setIsLiked(initialIsLiked);
-  }, [initialLikesCount, initialIsLiked]);
+    if (!isUpdating) {
+      setOptimisticLiked(initialIsLiked);
+      setOptimisticCount(initialLikesCount);
+    }
+  }, [initialIsLiked, initialLikesCount, isUpdating]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('You must be logged in to like an idea.');
+      setIsUpdating(true);
 
       const { error } = await supabase.from('likes').insert({
         trade_idea_id: Number(tradeIdeaId),
@@ -36,16 +38,27 @@ const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButt
       });
 
       if (error) {
-        // This handles cases where the user might click quickly multiple times
-        // or if there's a race condition. It safely ignores duplicate like errors.
-        if (error.code === '23505') return;
+        if (error.code === '23505') {
+          // If duplicate like, query to confirm current state
+          const { data } = await supabase
+            .from('likes')
+            .select('trade_idea_id')
+            .eq('trade_idea_id', Number(tradeIdeaId))
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (data) {
+            setOptimisticLiked(true);
+            return;
+          }
+        }
         throw error;
       }
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['userLikes'] });
-      setIsLiked(true);
-      setLikesCount((prev) => prev + 1);
+      setOptimisticLiked(true);
+      setOptimisticCount((prev) => prev + 1);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
@@ -53,15 +66,19 @@ const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButt
       queryClient.invalidateQueries({ queryKey: ['userLikes', user?.id] });
     },
     onError: (error: Error) => {
-      setIsLiked(false);
-      setLikesCount((prev) => prev - 1);
+      setOptimisticLiked(false);
+      setOptimisticCount((prev) => prev - 1);
       toast({ title: 'Error liking idea', description: error.message, variant: 'destructive' });
+    },
+    onSettled: () => {
+      setIsUpdating(false);
     },
   });
 
   const unlikeMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('You must be logged in to unlike an idea.');
+      setIsUpdating(true);
 
       const { error } = await supabase
         .from('likes')
@@ -73,8 +90,8 @@ const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButt
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['userLikes'] });
-      setIsLiked(false);
-      setLikesCount((prev) => prev - 1);
+      setOptimisticLiked(false);
+      setOptimisticCount((prev) => prev - 1);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
@@ -82,9 +99,12 @@ const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButt
       queryClient.invalidateQueries({ queryKey: ['userLikes', user?.id] });
     },
     onError: (error: Error) => {
-      setIsLiked(true);
-      setLikesCount((prev) => prev + 1);
+      setOptimisticLiked(true);
+      setOptimisticCount((prev) => prev + 1);
       toast({ title: 'Error unliking idea', description: error.message, variant: 'destructive' });
+    },
+    onSettled: () => {
+      setIsUpdating(false);
     },
   });
 
@@ -98,26 +118,26 @@ const LikeButton = ({ tradeIdeaId, initialLikesCount, initialIsLiked }: LikeButt
       return;
     }
 
-    if (isLiked) {
+    if (isUpdating) return; // Prevent double-clicks
+    if (optimisticLiked) {
       unlikeMutation.mutate();
     } else {
       likeMutation.mutate();
     }
   };
 
-  const isPending = likeMutation.isPending || unlikeMutation.isPending;
-
   return (
     <Button
+      onClick={handleLikeToggle}
       variant="ghost"
       size="sm"
-      onClick={handleLikeToggle}
-      disabled={isPending}
-      className="flex items-center gap-2 text-gray-400 hover:text-brand-green data-[liked=true]:text-brand-green"
-      data-liked={isLiked}
+      className={`flex items-center gap-1 text-xs ${
+        optimisticLiked ? 'text-brand-green' : 'text-gray-400'
+      } hover:text-brand-green`}
+      disabled={isUpdating}
     >
-      <ThumbsUp size={16} className={isLiked ? 'fill-current' : ''} />
-      <span>{likesCount}</span>
+      <ThumbsUp size={14} className={optimisticLiked ? 'fill-brand-green' : ''} />
+      <span>{optimisticCount}</span>
     </Button>
   );
 };

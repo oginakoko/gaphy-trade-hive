@@ -1,6 +1,7 @@
-
 import React from 'react';
 import { MediaItem } from '@/types/media';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface InlineMediaRendererProps {
   content: string;
@@ -59,29 +60,8 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
                   src={embedUrl}
                   className="w-full h-full rounded-lg"
                   frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                />
-              </div>
-              {item.title && (
-                <p className="text-center text-gray-300 text-sm mt-2 font-medium">
-                  {item.title}
-                </p>
-              )}
-              {item.description && (
-                <p className="text-center text-gray-400 text-sm mt-1">
-                  {item.description}
-                </p>
-              )}
-            </div>
-          );
-        } else if (item.file) {
-          return (
-            <div className="my-6">
-              <div className="max-w-2xl mx-auto">
-                <video
-                  src={item.url}
-                  className="w-full rounded-lg"
-                  controls
                 />
               </div>
               {item.title && (
@@ -99,22 +79,22 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
         } else {
           return (
             <div className="my-6 max-w-2xl mx-auto">
-              <div className="bg-brand-gray-200/20 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-brand-green text-sm font-medium">📹 Video Link</span>
-                </div>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 underline text-sm"
-                >
-                  {item.title || item.url}
-                </a>
-                {item.description && (
-                  <p className="text-gray-400 text-sm mt-2">{item.description}</p>
-                )}
-              </div>
+              <video
+                src={item.url}
+                className="w-full rounded-lg"
+                controls
+                preload="metadata"
+              />
+              {item.title && (
+                <p className="text-center text-gray-300 text-sm mt-2 font-medium">
+                  {item.title}
+                </p>
+              )}
+              {item.description && (
+                <p className="text-center text-gray-400 text-sm mt-1">
+                  {item.description}
+                </p>
+              )}
             </div>
           );
         }
@@ -146,50 +126,43 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
     }
   };
 
-  const processContent = () => {
-    let processedContent = content;
-    
-    // Replace media placeholders with actual media content
-    mediaItems.forEach(item => {
-      const placeholder = `[MEDIA:${item.id}]`;
-      const mediaElement = renderMediaContent(item);
-      
-      if (mediaElement) {
-        // Convert React element to string representation for display
-        const mediaHtml = `<div class="inline-media" data-media-id="${item.id}"></div>`;
-        processedContent = processedContent.replace(placeholder, mediaHtml);
-      }
-    });
-
-    return processedContent;
-  };
-
-  const renderProcessedContent = () => {
-    const processedText = processContent();
-    const parts = processedText.split(/(<div class="inline-media" data-media-id="[^"]+"><\/div>)/);
+  const renderContent = () => {
+    // Split content by media placeholders and render each part
+    const parts = content.split(/(\[MEDIA:[^\]]+\])/g);
     
     return parts.map((part, index) => {
-      const mediaMatch = part.match(/data-media-id="([^"]+)"/);
+      // Check if this part is a media placeholder
+      const mediaMatch = part.match(/\[MEDIA:([^\]]+)\]/);
+      
       if (mediaMatch) {
         const mediaId = mediaMatch[1];
         const mediaItem = mediaItems.find(item => item.id === mediaId);
+        
         if (mediaItem) {
-          return <div key={index}>{renderMediaContent(mediaItem)}</div>;
+          return (
+            <React.Fragment key={`media-${index}`}>
+              {renderMediaContent(mediaItem)}
+            </React.Fragment>
+          );
         }
+        return null;
       }
       
-      // Regular text content
-      return (
-        <div key={index} className="whitespace-pre-wrap">
-          {part}
-        </div>
-      );
-    });
+      // For non-media parts, render as markdown if non-empty
+      if (part.trim()) {
+        return (
+          <div key={`text-${index}`} className="prose prose-invert max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>
+          </div>
+        );
+      }
+      return null;
+    }).filter(Boolean); // Remove null entries
   };
 
   return (
-    <div className="prose prose-invert max-w-none">
-      {renderProcessedContent()}
+    <div className="space-y-4">
+      {renderContent()}
     </div>
   );
 };
