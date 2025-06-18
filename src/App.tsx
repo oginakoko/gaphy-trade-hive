@@ -23,7 +23,8 @@ import AuthGuard from "./components/auth/AuthGuard";
 import GuestGuard from "./components/auth/GuestGuard";
 import ManageApiKeys from "./pages/admin/ManageApiKeys";
 import Servers from "./pages/Servers";
-import ShortlinkRedirect from "./pages/ShortlinkRedirect"; // Import the ShortlinkRedirect component
+import ShortlinkRedirect from "./pages/ShortlinkRedirect";
+import CreateTradeIdea from "./pages/CreateTradeIdea";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
                 <Route path="/admin/users" element={<ManageUsers />} />
                 <Route path="/admin/api-keys" element={<ManageApiKeys />} />
+                <Route path="/create-trade-idea" element={<CreateTradeIdea />} />
               </Route>
               
               {/* Redirect route for shortlinks */}

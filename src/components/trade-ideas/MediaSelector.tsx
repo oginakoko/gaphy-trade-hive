@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Link, Video, Image, X } from 'lucide-react';
+import { Upload, Link, Video, Image, X, Plus } from 'lucide-react';
 import { MediaItem } from '@/types/media';
 import { toast } from '@/components/ui/use-toast';
 
