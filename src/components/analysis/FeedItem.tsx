@@ -16,7 +16,7 @@ interface FeedItemProps {
 const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemProps) => {
   if (item.viewType === 'idea') {
     const tradeIdea = item as TradeIdea & { viewType: 'idea' };
-    const ideaIdAsNumber = parseInt(tradeIdea.id);
+    const ideaIdAsNumber = typeof tradeIdea.id === 'number' ? tradeIdea.id : parseInt(String(tradeIdea.id));
     const likesCount = tradeIdea.likes?.[0]?.count || 0;
     const userHasLiked = userLikes.has(ideaIdAsNumber);
     

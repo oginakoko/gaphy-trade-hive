@@ -1,3 +1,4 @@
+
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -162,7 +163,7 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
         image_url: ideaData.image_url || null,
       };
 
-      let tradeIdeaId: string;
+      let tradeIdeaId: number;
 
       if (isEditing) {
         tradeIdeaId = initialData.id;

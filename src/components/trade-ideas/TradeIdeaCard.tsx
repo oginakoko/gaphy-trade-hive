@@ -1,3 +1,4 @@
+
 import { TradeIdea } from '@/types';
 import { ArrowUpRight, Edit, Share } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -106,7 +107,7 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
             <p className="text-xs text-brand-green">{idea.instrument}</p>
           </div>
           <LikeButton 
-            tradeIdeaId={idea.id} 
+            tradeIdeaId={String(idea.id)} 
             initialLikesCount={likesCount} 
             initialIsLiked={userHasLiked}
           />

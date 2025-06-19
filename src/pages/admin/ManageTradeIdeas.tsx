@@ -62,7 +62,7 @@ const ManageTradeIdeasPage = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (ideaId: string) => {
+        mutationFn: async (ideaId: number) => {
             if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
                 throw new Error("You are not authorized to perform this action.");
             }
