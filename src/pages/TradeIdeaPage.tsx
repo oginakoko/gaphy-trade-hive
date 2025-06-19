@@ -158,7 +158,7 @@ const TradeIdeaPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <LikeButton 
-                    tradeIdeaId={idea.id} 
+                    tradeIdeaId={String(idea.id)} 
                     initialLikesCount={idea.likes?.[0]?.count || 0}
                     initialIsLiked={!!userHasLiked}
                   />

@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,7 +19,7 @@ export function NewMessageDialog({ onSelectUser }: NewMessageDialogProps) {
   const [open, setOpen] = useState(false);
 
   const filteredUsers = profiles.filter((profile) =>
-    profile.username.toLowerCase().includes(search.toLowerCase())
+    profile.username?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleSelectUser = (userId: string) => {
@@ -63,15 +64,15 @@ export function NewMessageDialog({ onSelectUser }: NewMessageDialogProps) {
                       {profile.avatar_url ? (
                         <img
                           src={profile.avatar_url}
-                          alt={profile.username}
+                          alt={profile.username || 'User'}
                           className="w-8 h-8 rounded-full"
                         />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                          {profile.username[0].toUpperCase()}
+                          {profile.username?.[0]?.toUpperCase() || 'U'}
                         </div>
                       )}
-                      <span>{profile.username}</span>
+                      <span>{profile.username || 'Unknown User'}</span>
                     </div>
                   </div>
                 ))

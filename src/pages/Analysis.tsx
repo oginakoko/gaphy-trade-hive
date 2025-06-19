@@ -59,7 +59,7 @@ const Analysis = () => {
                     feed={feed}
                     isLoading={isLoading}
                     error={error as Error | null}
-                    userLikes={userLikes}
+                    userLikes={userLikes as Set<number>}
                     isAdmin={isAdmin}
                     onEditIdea={handleEdit}
                 />

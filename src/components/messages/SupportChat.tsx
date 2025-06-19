@@ -1,7 +1,9 @@
+
 import { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,12 +12,15 @@ import { cn } from '@/lib/utils';
 
 export function SupportChat() {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { conversations = [], sendMessage, markAsRead, loading } = useMessages();
   const [messageText, setMessageText] = useState('');
 
+  const isAdmin = profile?.is_admin;
+
   // Find admin conversations
   const adminConversations = conversations.filter(conv => 
-    conv.other_user?.is_admin || user?.isAdmin
+    conv.other_user?.is_admin || isAdmin
   );
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -23,7 +28,7 @@ export function SupportChat() {
     if (!messageText.trim()) return;
 
     let recipientId: string;
-    if (user?.isAdmin) {
+    if (isAdmin) {
       // If admin is sending, use the currently selected user
       if (!selectedUserId) return;
       recipientId = selectedUserId;
@@ -49,7 +54,7 @@ export function SupportChat() {
 
   return (
     <div className="h-screen flex bg-background">
-      {user?.isAdmin && (
+      {isAdmin && (
         <div className="w-64 border-r">
           <div className="p-4 border-b">
             <h2 className="font-semibold">Support Chats</h2>
@@ -94,7 +99,7 @@ export function SupportChat() {
       <div className="flex-1 flex flex-col h-full">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="font-semibold">
-            {user?.isAdmin ? (selectedConversation ? 
+            {isAdmin ? (selectedConversation ? 
               `Chat with ${selectedConversation.other_user_name}` : 
               'Select a user to chat with'
             ) : 'Support Chat'}
@@ -109,7 +114,7 @@ export function SupportChat() {
             </div>
           ) : !selectedConversation?.messages.length ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              {user?.isAdmin ? 
+              {isAdmin ? 
                 'Select a user to start chatting' : 
                 'Start a conversation with support'}
             </div>
@@ -127,7 +132,7 @@ export function SupportChat() {
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={message.sender?.avatar_url} />
                       <AvatarFallback>
-                        {message.sender?.username[0].toUpperCase()}
+                        {message.sender?.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   )}
@@ -153,13 +158,13 @@ export function SupportChat() {
             <Input
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder={user?.isAdmin ? 
+              placeholder={isAdmin ? 
                 (selectedUserId ? "Type your message..." : "Select a user to chat with") :
                 "Type your message to support..."
               }
-              disabled={user?.isAdmin && !selectedUserId}
+              disabled={isAdmin && !selectedUserId}
             />
-            <Button type="submit" disabled={user?.isAdmin && !selectedUserId}>
+            <Button type="submit" disabled={isAdmin && !selectedUserId}>
               Send
             </Button>
           </div>
