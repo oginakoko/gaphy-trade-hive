@@ -2,7 +2,7 @@
 import { Twitter, Instagram, Link, BarChart, BookOpen, ShoppingCart } from 'lucide-react';
 
 export type TradeIdea = {
-  id: string;
+  id: number; // Changed from string to number to match database bigint
   created_at: string;
   title: string;
   instrument: string;
