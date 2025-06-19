@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -173,7 +174,7 @@ const TradeIdeaPage = () => {
                 <TradeTrackingTable trades={trades} />
               )}
 
-              <Comments tradeIdeaId={idea.id} />
+              <Comments tradeIdeaId={String(idea.id)} />
             </div>
           </div>
         </div>
