@@ -1,9 +1,11 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
 
 export interface Follow {
+  id: number;
   follower_id: string;
   following_id: string;
   created_at: string;

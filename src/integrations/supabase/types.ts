@@ -188,6 +188,41 @@ export type Database = {
           },
         ]
       }
+      message_attachments: {
+        Row: {
+          created_at: string | null
+          filename: string | null
+          id: number
+          message_id: number | null
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          filename?: string | null
+          id?: never
+          message_id?: number | null
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          filename?: string | null
+          id?: never
+          message_id?: number | null
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "private_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mpesa_transactions: {
         Row: {
           ad_id: number | null
@@ -296,22 +331,58 @@ export type Database = {
           },
         ]
       }
+      private_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          is_broadcast: boolean | null
+          is_read: boolean | null
+          recipient_id: string | null
+          sender_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: never
+          is_broadcast?: boolean | null
+          is_read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: never
+          is_broadcast?: boolean | null
+          is_read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           id: string
+          is_admin: boolean
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           id: string
+          is_admin?: boolean
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           id?: string
+          is_admin?: boolean
           updated_at?: string | null
           username?: string | null
         }
@@ -493,12 +564,72 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_analysis: {
+        Row: {
+          analyzed_text: string
+          asset: string | null
+          created_at: string
+          direction: string | null
+          entry_price: number | null
+          exit_price: number | null
+          id: string
+          key_points: string[] | null
+          risk_reward: number | null
+          sentiment: string | null
+          stop_loss: number | null
+          target_price: number | null
+          trade_idea_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          analyzed_text: string
+          asset?: string | null
+          created_at?: string
+          direction?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          key_points?: string[] | null
+          risk_reward?: number | null
+          sentiment?: string | null
+          stop_loss?: number | null
+          target_price?: number | null
+          trade_idea_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          analyzed_text?: string
+          asset?: string | null
+          created_at?: string
+          direction?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          key_points?: string[] | null
+          risk_reward?: number | null
+          sentiment?: string | null
+          stop_loss?: number | null
+          target_price?: number | null
+          trade_idea_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_analysis_trade_idea_id_fkey"
+            columns: ["trade_idea_id"]
+            isOneToOne: false
+            referencedRelation: "trade_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_idea_media: {
         Row: {
           created_at: string
           description: string | null
           id: string
           media_type: string
+          placeholder_id: string | null
           position: number
           thumbnail_url: string | null
           title: string | null
@@ -510,6 +641,7 @@ export type Database = {
           description?: string | null
           id?: string
           media_type: string
+          placeholder_id?: string | null
           position?: number
           thumbnail_url?: string | null
           title?: string | null
@@ -521,6 +653,7 @@ export type Database = {
           description?: string | null
           id?: string
           media_type?: string
+          placeholder_id?: string | null
           position?: number
           thumbnail_url?: string | null
           title?: string | null
@@ -580,6 +713,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unread_message_counts: {
+        Row: {
+          id: number
+          last_checked_at: string | null
+          unread_count: number | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: never
+          last_checked_at?: string | null
+          unread_count?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: never
+          last_checked_at?: string | null
+          unread_count?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string | null
+          follower_id: string | null
+          following_id: string | null
+          id: number
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id?: string | null
+          following_id?: string | null
+          id?: never
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string | null
+          following_id?: string | null
+          id?: never
+        }
+        Relationships: []
       }
       verifications: {
         Row: {
