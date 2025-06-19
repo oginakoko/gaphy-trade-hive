@@ -8,8 +8,8 @@ export async function parseStream(stream: ReadableStream): Promise<ReadableStrea
       const parser = createParser({
         onEvent(msg: EventSourceMessage) {
           try {
-            // Skip processing messages
-            if (msg.data === 'OPENROUTER PROCESSING') {
+            // Skip processing specific messages
+            if (msg.data === 'OPENROUTER PROCESSING' || msg.data === '[DONE]') {
               return;
             }
 

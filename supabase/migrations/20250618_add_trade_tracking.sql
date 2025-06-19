@@ -1,7 +1,7 @@
 -- Create trade tracking table
 CREATE TABLE IF NOT EXISTS public.trade_tracking (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    trade_idea_id uuid REFERENCES public.trade_ideas(id),
+    trade_idea_id bigint REFERENCES public.trade_ideas(id),
     asset TEXT NOT NULL,
     direction TEXT NOT NULL CHECK (direction IN ('Long', 'Short')),
     entry_price DECIMAL,

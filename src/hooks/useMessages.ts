@@ -1,11 +1,21 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
 import type { Conversation, Message } from '@/types/chat';
+import type { User } from '@supabase/supabase-js';
+import { UseMutateAsyncFunction } from '@tanstack/react-query';
 
-export function useMessages() {
+// Define the return type of the hook for clarity and type safety
+interface UseMessagesReturn {
+  conversations: Conversation[];
+  loading: boolean;
+  sendMessage: UseMutateAsyncFunction<any, Error, { recipient_id: string; content: string; is_broadcast?: boolean; }, unknown>;
+  markAsRead: UseMutateAsyncFunction<any, Error, string, unknown>;
+  sendBroadcastMessage: UseMutateAsyncFunction<any, Error, { content: string; }, unknown>;
+}
+
+export function useMessages(): UseMessagesReturn {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -15,27 +25,47 @@ export function useMessages() {
     queryFn: async () => {
       if (!user?.id) return [];
 
+      // First get all private messages
       const { data: messages, error } = await supabase
         .from('private_messages')
-        .select(`
-          *,
-          sender:profiles!private_messages_sender_id_fkey(id, username, avatar_url, is_admin),
-          recipient:profiles!private_messages_recipient_id_fkey(id, username, avatar_url, is_admin)
-        `)
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .select('*')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id},is_broadcast.eq.true`)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching messages:', error);
+        throw error;
+      }
+
+      // Then get all user profiles involved in the conversations
+      const userIds = messages?.reduce((acc: Set<string>, msg) => {
+        if (msg.sender_id) acc.add(msg.sender_id);
+        if (msg.recipient_id) acc.add(msg.recipient_id);
+        return acc;
+      }, new Set<string>());
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', Array.from(userIds || []));
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]));
 
       // Group messages by conversation
       const conversationMap = new Map<string, Conversation>();
 
       messages?.forEach((msg) => {
         const isFromUser = msg.sender_id === user.id;
-        const otherUser = isFromUser ? msg.recipient : msg.sender;
         const otherUserId = isFromUser ? msg.recipient_id : msg.sender_id;
+        if (!otherUserId) return;
 
-        if (!otherUser || !otherUserId) return;
+        const otherUser = profilesMap.get(otherUserId);
+        if (!otherUser) return;
 
         const conversationKey = otherUserId;
 
@@ -53,7 +83,7 @@ export function useMessages() {
         }
 
         const conversation = conversationMap.get(conversationKey)!;
-        
+
         const messageObj: Message = {
           id: msg.id.toString(),
           content: msg.content,
@@ -61,8 +91,9 @@ export function useMessages() {
           recipient_id: msg.recipient_id || '',
           created_at: msg.created_at || '',
           is_read: msg.is_read || false,
-          sender: msg.sender,
-          recipient: msg.recipient
+          sender: profilesMap.get(msg.sender_id || ''),
+          recipient: profilesMap.get(msg.recipient_id || ''),
+          is_broadcast: msg.is_broadcast || false
         };
 
         conversation.messages.push(messageObj);
@@ -91,29 +122,55 @@ export function useMessages() {
     enabled: !!user?.id
   });
 
-  // Send message mutation
   const { mutateAsync: sendMessage } = useMutation({
     mutationFn: async ({ recipient_id, content, is_broadcast = false }: { 
       recipient_id: string; 
       content: string; 
       is_broadcast?: boolean 
     }) => {
-      const { data, error } = await supabase
-        .from('private_messages')
-        .insert({
-          sender_id: user?.id,
-          recipient_id,
-          content,
-          is_broadcast
-        })
-        .select()
+      if (!user?.id || !content.trim()) throw new Error('Invalid message data');
+
+      // Get recipient profile first
+      const { data: recipient, error: recipientError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', recipient_id)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (recipientError) throw recipientError;
+
+      // Send the message
+      const { data: message, error: messageError } = await supabase
+        .from('private_messages')
+        .insert({
+          sender_id: user.id,
+          recipient_id,
+          content: content.trim(),
+          is_broadcast
+        })
+        .select('*')
+        .single();
+
+      if (messageError) {
+        console.error('Error sending message:', messageError);
+        throw messageError;
+      }
+
+      // Get sender profile
+      const { data: sender } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      return {
+        ...message,
+        sender,
+        recipient
+      };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
       toast({
         description: 'Message sent successfully',
       });
@@ -122,63 +179,65 @@ export function useMessages() {
       console.error('Error sending message:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send message',
+        description: error instanceof Error ? error.message : 'Failed to send message',
         variant: 'destructive',
       });
     }
   });
 
-  // Mark as read mutation
   const { mutateAsync: markAsRead } = useMutation({
     mutationFn: async (otherUserId: string) => {
+      if (!user?.id) throw new Error('Not authenticated');
+
       const { error } = await supabase
         .from('private_messages')
         .update({ is_read: true })
         .eq('sender_id', otherUserId)
-        .eq('recipient_id', user?.id)
+        .eq('recipient_id', user.id)
         .eq('is_read', false);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
     }
   });
 
   // Broadcast message mutation (admin only)
   const { mutateAsync: sendBroadcastMessage } = useMutation({
     mutationFn: async ({ content }: { content: string }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+
       // Get all users except current user
       const { data: users, error: usersError } = await supabase
         .from('profiles')
         .select('id')
-        .neq('id', user?.id);
+        .neq('id', user.id);
 
       if (usersError) throw usersError;
 
-      // Send message to each user
-      const promises = users?.map(async (targetUser) => {
-        return supabase
-          .from('private_messages')
-          .insert({
-            sender_id: user?.id,
-            recipient_id: targetUser.id,
-            content,
-            is_broadcast: true
-          });
-      }) || [];
+      // Send broadcast messages in batches
+      const messages = users?.map(targetUser => ({
+        sender_id: user.id,
+        recipient_id: targetUser.id,
+        content,
+        is_broadcast: true
+      })) || [];
 
-      const results = await Promise.all(promises);
-      const errors = results.filter(result => result.error);
-      
-      if (errors.length > 0) {
-        throw new Error(`Failed to send ${errors.length} messages`);
+      // Insert all messages at once
+      const { error } = await supabase
+        .from('private_messages')
+        .insert(messages);
+
+      if (error) {
+        console.error('Error sending broadcast messages:', error);
+        throw error;
       }
 
-      return results;
+      return { success: true, count: messages.length };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
       toast({
         description: 'Broadcast message sent to all users',
       });
@@ -187,7 +246,7 @@ export function useMessages() {
       console.error('Error sending broadcast:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send broadcast message',
+        description: error instanceof Error ? error.message : 'Failed to send broadcast message',
         variant: 'destructive',
       });
     }
@@ -198,6 +257,6 @@ export function useMessages() {
     loading,
     sendMessage,
     markAsRead,
-    sendBroadcastMessage
+    sendBroadcastMessage, // Add sendBroadcastMessage to the returned object
   };
 }

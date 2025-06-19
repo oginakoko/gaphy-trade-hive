@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, MessageCircle, X, Paperclip, Loader2, Send } from 'lucide-react';
+import { Bot, MessageCircle, X, Paperclip, Loader2, Send, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,8 @@ import remarkGfm from 'remark-gfm';
 import { chatWithAI } from '@/lib/openrouter';
 import { parseStream } from '@/lib/messageParser';
 import type { TradeData } from '@/lib/openrouter';
+import type { TradeIdea } from '@/types';
+import { Card } from '@/components/ui/card'; // Ensure Card is imported
 
 type Message = {
   sender: 'user' | 'bot';
@@ -24,11 +26,17 @@ type GaphyBotProps = {
   onClose: () => void;
 };
 
+const initialMessage: Message = { 
+  sender: 'bot', 
+  text: "Hi! I'm AlphaFinder, your AI trading assistant. You can ask me to:\n\n- Analyze trade ideas and entries\n- Check risk/reward ratios\n- Extract key trade details\n- Find specific trade setups\n\nHow can I help you today?" 
+};
+
 const GaphyBot = ({ onClose }: GaphyBotProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [waitingForTradeIdeaId, setWaitingForTradeIdeaId] = useState<boolean>(false);
   const { user } = useAuth();
   const scrollViewport = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,17 +50,11 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
       if (storedMessages) {
         setMessages(JSON.parse(storedMessages));
       } else {
-        setMessages([{ 
-          sender: 'bot', 
-          text: "Hi! I'm AlphaFinder, your AI trading assistant. You can ask me to:\n\n- Analyze trade ideas and entries\n- Check risk/reward ratios\n- Extract key trade details\n- Find specific trade setups\n\nHow can I help you today?" 
-        }]);
+        setMessages([initialMessage]);
       }
     } catch (error) {
       console.error("Failed to parse messages from localStorage", error);
-      setMessages([{ 
-        sender: 'bot', 
-        text: "Hi! I'm AlphaFinder. Ask me about today's top trade ideas." 
-      }]);
+      setMessages([initialMessage]);
     }
   }, []);
 
@@ -60,6 +62,8 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem('gaphybot-messages', JSON.stringify(messages));
+    } else {
+      localStorage.removeItem('gaphybot-messages');
     }
     if (scrollViewport.current) {
       scrollViewport.current.scrollTo({ 
@@ -84,97 +88,109 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
     setInput('');
     setIsBotThinking(true);
 
-    // Create an empty bot message that we'll stream content into
-    setMessages(prev => [...prev, { sender: 'bot', text: '' }]);
+    // If we are waiting for a trade idea ID, process the input as such
+    if (waitingForTradeIdeaId) {
+      setWaitingForTradeIdeaId(false);
+      // Attempt to fetch the trade idea and its analysis
+      const tradeIdeaId = input.trim(); // Assuming user provides the ID
+      try {
+        const { data: tradeIdea, error: ideaError } = await supabase
+          .from('trade_ideas')
+          .select('*, trade_analysis(*)')
+          .eq('id', tradeIdeaId)
+          .single();
+
+        if (ideaError || !tradeIdea) {
+          setMessages(prev => [...prev, { sender: 'bot', text: 'Sorry, I couldn\'t find a trade idea with that ID. Please provide the correct ID or ask about a different trade idea.' }]);
+        } else {
+          // Use the fetched trade idea and analysis as context for the AI
+          const tradeContext = `User is asking about Trade Idea ID ${tradeIdea.id}:\nTitle: ${tradeIdea.title}\nInstrument: ${tradeIdea.instrument}\nBreakdown: ${tradeIdea.breakdown}\n\nExisting Analysis: ${tradeIdea.trade_analysis ? JSON.stringify(tradeIdea.trade_analysis) : 'None'}`;
+          await sendToAI(newMessages, tradeContext); // Send to AI with context
+        }
+      } catch (error) {
+        console.error('Error fetching trade idea for analysis:', error);
+        setMessages(prev => [...prev, { sender: 'bot', text: 'An error occurred while fetching the trade idea. Please try again.' }]);
+      } finally {
+        setIsBotThinking(false);
+      }
+      return; // Stop here as we handled the input
+    }
+
+    // Check if the user is asking about trade analysis
+    const isTradingQuery = /analyze|analysis|trade idea|entry|exit|long|short|buy|sell|stop loss|target|setup/i.test(input.toLowerCase());
+
+    if (isTradingQuery) {
+      // Ask the user to specify the trade idea
+      setMessages(prev => [...prev, { sender: 'bot', text: 'Which trade idea would you like me to analyze? Please provide the Trade Idea ID.' }]);
+      setWaitingForTradeIdeaId(true);
+      setIsBotThinking(false); // Stop thinking indicator while waiting for user input
+      return; // Stop here, waiting for user to provide ID
+    }
+
+    // If not a trade analysis query, send to AI with general context
+    await sendToAI(newMessages);
+  };
+
+  // Helper function to send messages to the AI
+  const sendToAI = async (currentMessages: Message[], context?: string) => {
+     setIsBotThinking(true);
+     setMessages(prev => [...prev, { sender: 'bot', text: '' }]); // Add empty bot message for streaming
 
     try {
-      // Create a new abort controller for this request
       abortController.current = new AbortController();
 
-      // Check for trade analysis in the database first
-      let tradeAnalysis = '';
-      const isTradingQuery = /trade|entry|exit|long|short|buy|sell|stop loss|target|analysis|setup/i.test(input.toLowerCase());
-      
-      if (isTradingQuery) {
-        try {
-          const { data: analyses, error: analysisError } = await supabase
-            .from('trade_analysis')
-            .select(`
-              *,
-              trade_ideas(title, instrument, created_at)
-            `)
-            .textSearch('analyzed_text', input.replace(/[^\w\s]/g, ' '))
-            .order('created_at', { ascending: false })
-            .limit(3);
-
-          if (!analysisError && analyses?.length > 0) {
-            tradeAnalysis = "Here are some relevant trade analyses I found:\n\n" + 
-              analyses.map(analysis => {
-                const idea = analysis.trade_ideas;
-                const tradeId = analysis.trade_idea_id;
-                return `**${idea.title}** (${idea.instrument}) - [View Trade](#/trade-ideas/${tradeId})\n` +
-                  `- Direction: ${analysis.direction || 'Not specified'}\n` +
-                  `- Entry: ${analysis.entry_price || 'Not specified'}\n` +
-                  `- Target: ${analysis.target_price || 'Not specified'}\n` +
-                  `- Stop Loss: ${analysis.stop_loss || 'Not specified'}\n` +
-                  (analysis.risk_reward ? `- Risk/Reward: ${analysis.risk_reward}\n` : '') +
-                  `- Key Points: ${analysis.key_points?.join(', ') || 'None provided'}\n`;
-              }).join('\n');
-          }
-        } catch (error) {
-          console.error('Error fetching trade analysis:', error);
-        }
-      }
-
-      // Create chat context
       const chatMessages = [
-        ...newMessages.map(m => ({ 
+        ...currentMessages.map(m => ({ 
           role: m.sender === 'user' ? 'user' as const : 'assistant' as const, 
           content: m.text 
         })),
-        tradeAnalysis ? { 
+        context ? { 
           role: 'system' as const, 
-          content: `Previous analysis found:\n${tradeAnalysis}\n\nIncorporate this into your response if relevant.` 
+          content: context 
         } : undefined
       ].filter(Boolean);
 
-      // Get streaming response
       const stream = await chatWithAI(chatMessages, abortController.current.signal);
       const parsedStream = await parseStream(stream);
       const reader = parsedStream.getReader();
 
+      let streamedContent = '';
       while (true) {
-        const { value, done } = await reader.read();
+        const { done, value } = await reader.read(); // Await the read operation
         if (done) break;
-
-        // Update the last message with the new content
+        streamedContent += value;
         setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
+          const lastMessage = prev[prev.length - 1];
           if (lastMessage.sender === 'bot') {
-            lastMessage.text += value;
+            return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent }];
           }
-          return newMessages;
+          return prev;
         });
       }
 
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('Error in chat:', error);
-        // Update the last message with the error
+      if (error.name === 'AbortError') {
+        console.log('Message stream aborted');
         setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
+          const lastMessage = prev[prev.length - 1];
           if (lastMessage.sender === 'bot') {
-            lastMessage.text = "I'm having trouble connecting to the AI service, but I can still help with previous trade analyses or general questions. Please try again or rephrase your question.";
+            return [...prev.slice(0, -1), { ...lastMessage, text: lastMessage.text + '\n\n*(Response interrupted)*' }];
           }
-          return newMessages;
+          return prev;
         });
-
-        toast({ 
-          title: 'Chat Error', 
-          description: "Connection to AI service failed. Using fallback responses.", 
-          variant: 'default' 
+      } else {
+        console.error('Error streaming message:', error);
+        setMessages(prev => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage.sender === 'bot') {
+            return [...prev.slice(0, -1), { ...lastMessage, text: lastMessage.text + '\n\n*(Error receiving response)*' }];
+          }
+          return prev;
+        });
+        toast({
+          title: 'AI Error',
+          description: 'Failed to get response from AI service.',
+          variant: 'destructive',
         });
       }
     } finally {
@@ -183,133 +199,140 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
     }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0) return;
-    if (!user) {
-      toast({ title: 'Authentication Required', description: 'Please log in to upload images.', variant: 'destructive' });
-      return;
-    }
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
 
     setIsUploading(true);
-    try {
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `chat-images/${fileName}`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+    const filePath = `public/${user.id}-${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('trade-ideas').upload(filePath, file);
-      if (uploadError) throw uploadError;
-      
-      const { data } = supabase.storage.from('trade-ideas').getPublicUrl(filePath);
-      
-      const imageMessage: Message = { sender: 'user', text: '', imageUrl: data.publicUrl };
-      setMessages(prev => [...prev, imageMessage]);
-      
-    } catch (error: any) {
-      toast({ title: 'Upload Error', description: error.message, variant: 'destructive' });
+    try {
+      const { data, error } = await supabase.storage
+        .from('bot-uploads') // Ensure you have a storage bucket named 'bot-uploads'
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('bot-uploads')
+        .getPublicUrl(filePath);
+
+      const imageUrl = urlData.publicUrl;
+
+      const userMessage: Message = { sender: 'user', text: `Uploaded image: ${file.name}`, imageUrl };
+      setMessages(prev => [...prev, userMessage]);
+
+      // Optionally send the image URL to the AI for analysis
+      // handleSendMessage(new Event('submit') as any, imageUrl);
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Could not upload the file.',
+        variant: 'destructive',
+      });
     } finally {
       setIsUploading(false);
-      if (event.target) event.target.value = ''; // Reset file input
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
+  const handleClearChat = () => {
+    setMessages([initialMessage]);
+    localStorage.removeItem('gaphybot-messages');
+  };
+
   return (
-    <div className="glass-card rounded-xl p-4 w-full max-w-md mx-auto flex flex-col h-[60vh] max-h-[700px] min-h-[400px] shadow-2xl animate-fade-in-up">
-      <div className="flex items-center justify-between gap-3 p-2 border-b border-white/10 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-brand-green/10 rounded-full">
-            <Bot className="w-6 h-6 text-brand-green" />
+    <div className="fixed bottom-4 right-4 z-50 w-full max-w-md">
+      <Card className="bg-gray-900 text-white border-gray-700 shadow-lg">
+        <div className="flex justify-between items-center p-4 border-b border-gray-700">
+          <div className="flex items-center space-x-2">
+            <Bot className="h-6 w-6 text-brand-green" />
+            <h3 className="text-lg font-semibold">AlphaFinder AI</h3>
+            {isBotThinking && <Loader2 className="h-4 w-4 animate-spin text-brand-green" />}
           </div>
-          <div>
-            <h3 className="font-bold text-white">AlphaFinder</h3>
-            <p className="text-xs text-gray-400">Your AI Trade Assistant</p>
+          <div className="flex items-center space-x-2">
+             <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClearChat}
+                className="text-gray-400 hover:text-white"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-400 hover:text-white">
-          <X className="w-5 h-5" />
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-grow my-2">
-        <div className="p-4 space-y-4" ref={scrollViewport}>
-          {messages.map((msg, index) => (
-            <div key={index} className={cn('flex items-start gap-3', 
-              msg.sender === 'user' ? 'justify-end' : 'justify-start'
-            )}>
-              {msg.sender === 'bot' && (
-                <div className="p-2 bg-brand-gray-200 rounded-full flex-shrink-0 self-end">
-                  <Bot className="w-5 h-5 text-brand-green" />
-                </div>
-              )}
-              <div className={cn('rounded-lg px-4 py-2 text-white max-w-[80%]', 
-                msg.sender === 'user' ? 'bg-brand-green/20' : 'bg-brand-gray-200'
-              )}>
-                {msg.imageUrl && (
-                  <img src={msg.imageUrl} alt="User upload" className="rounded-md mb-2 max-w-full h-auto" />
+        <ScrollArea className="h-80 p-4">
+          <div className="space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={cn(
+                  'flex',
+                  message.sender === 'user' ? 'justify-end' : 'justify-start'
                 )}
-                {msg.text && (
-                  <div className="prose prose-sm prose-invert max-w-none [&_a]:text-brand-green [&_a:hover]:underline">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
-              {msg.sender === 'user' && (
-                <div className="p-2 bg-brand-gray-200 rounded-full flex-shrink-0 self-end">
-                  <MessageCircle className="w-5 h-5 text-gray-400" />
+              >
+                <div
+                  className={cn(
+                    'max-w-[80%] rounded-lg px-4 py-2',
+                    message.sender === 'user'
+                      ? 'bg-brand-green/20 text-white'
+                      : 'bg-gray-800 text-white prose prose-invert'
+                  )}
+                >
+                  {message.imageUrl && (
+                    <img src={message.imageUrl} alt="Uploaded content" className="max-w-full h-auto rounded mb-2" />
+                  )}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
                 </div>
-              )}
-            </div>
-          ))}
-          {isBotThinking && (
-            <div className="flex items-start gap-3 justify-start">
-              <div className="p-2 bg-brand-gray-200 rounded-full flex-shrink-0 self-end">
-                <Bot className="w-5 h-5 text-brand-green" />
               </div>
-              <div className="rounded-lg px-4 py-2 text-white max-w-[80%] bg-brand-gray-200 flex items-center">
-                <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2 p-2 border-t border-white/10 flex-shrink-0">
-        <Input 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g., Show top NAS100 ideas"
-          className="bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-white"
-          disabled={isUploading || isBotThinking}
-        />
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleImageUpload} 
-          className="hidden" 
-          accept="image/*" 
-          disabled={isUploading} 
-        />
-        <Button 
-          type="button" 
-          size="icon" 
-          variant="ghost" 
-          onClick={() => fileInputRef.current?.click()} 
-          disabled={isUploading || isBotThinking}
-        >
-          {isUploading ? 
-            <Loader2 className="w-5 h-5 animate-spin" /> : 
-            <Paperclip className="w-5 h-5 text-gray-400" />
-          }
-        </Button>
-        <Button 
-          type="submit" 
-          size="icon" 
-          className="bg-brand-green hover:bg-brand-green/80 flex-shrink-0" 
-          disabled={isUploading || isBotThinking}
-        >
-          <Send className="w-5 h-5 text-black" />
-        </Button>
-      </form>
+            ))}
+          </div>
+        </ScrollArea>
+        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 flex items-center space-x-2">
+           <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileUpload}
+            accept="image/*,video/*,audio/*,document/*"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isBotThinking}
+            className="border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800"
+          >
+            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+          </Button>
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={isBotThinking ? 'Thinking...' : waitingForTradeIdeaId ? 'Enter Trade Idea ID...' : 'Ask AlphaFinder...'}
+            className="flex-1 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+            disabled={isBotThinking || isUploading}
+          />
+          <Button type="submit" disabled={!input.trim() || isBotThinking || isUploading} className="bg-brand-green hover:bg-brand-green/90">
+            <Send className="h-5 w-5" />
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 };

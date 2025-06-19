@@ -1,4 +1,3 @@
-
 export interface Message {
   id: string;
   content: string;
@@ -6,6 +5,7 @@ export interface Message {
   recipient_id: string;
   created_at: string;
   is_read: boolean;
+  is_broadcast?: boolean;
   sender?: {
     id: string;
     username: string | null;

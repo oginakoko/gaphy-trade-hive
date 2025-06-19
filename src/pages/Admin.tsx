@@ -42,6 +42,17 @@ const AdminPage = () => {
             </Card>
           </Link>
           
+          <Link to="/admin/messages">
+            <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
+              <CardHeader>
+                <CardTitle className="text-white">User Messages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400">Message any user directly and send broadcast announcements.</p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to="/admin/donations">
             <Card className="glass-card h-full hover:border-brand-green/50 transition-colors duration-300">
               <CardHeader>

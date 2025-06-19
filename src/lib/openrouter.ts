@@ -15,11 +15,12 @@ const DEFAULT_MODEL = 'mistralai/mixtral-8x7b-instruct';
 export interface TradeData {
   asset: string;
   direction: 'Long' | 'Short';
-  entry_price?: number;
-  exit_price?: number;
-  target_price?: number;
-  stop_loss?: number;
-  risk_reward?: number;
+  entry_price: number | null;
+  target_price: number | null;
+  stop_loss: number | null;
+  risk_reward: number | null;
+  sentiment?: 'Bullish' | 'Bearish' | 'Neutral';
+  key_points?: string[];
   status: 'open' | 'closed' | 'cancelled';
 }
 
@@ -194,7 +195,9 @@ Return format (JSON):
   "entry_price": number | null,  // Optional
   "target_price": number | null, // Optional
   "stop_loss": number | null,    // Optional
-  "risk_reward": number | null   // Optional, calculate if have both target and stop
+  "risk_reward": number | null,   // Optional, calculate if have both target and stop
+  "sentiment": string | null, // Optional
+  "key_points": string[] | null // Optional
 }`
     },
     {
@@ -217,24 +220,46 @@ Return format (JSON):
     }
 
     const result = data.choices[0].message.content;
+    console.log('Raw AI response:', result); // Log raw response for debugging
 
     try {
-      const parsedData = JSON.parse(result);
+      // Attempt to extract JSON from the response
+      const jsonMatch = result.match(/```json\\n([\\s\\S]*?)\\n```/);
+      let jsonString = result;
+
+      if (jsonMatch && jsonMatch[1]) {
+        jsonString = jsonMatch[1];
+      } else {
+        // Fallback to finding the first { and last }
+        const firstCurly = result.indexOf('{');
+        const lastCurly = result.lastIndexOf('}');
+        if (firstCurly !== -1 && lastCurly !== -1 && lastCurly > firstCurly) {
+          jsonString = result.substring(firstCurly, lastCurly + 1);
+        }
+      }
+
+      const parsedData = JSON.parse(jsonString);
+
       if (parsedData && parsedData.asset && parsedData.direction) {
         // Only proceed if we have either entry price or target price
-        if (!parsedData.entry_price && !parsedData.target_price) {
+        if (parsedData.entry_price === null && parsedData.target_price === null) {
+          console.log('No explicit entry or target price found.');
           return null;
         }
 
         // Calculate risk/reward if we have both target and stop
-        if (parsedData.target_price && parsedData.stop_loss && parsedData.entry_price) {
+        if (parsedData.target_price !== null && parsedData.stop_loss !== null && parsedData.entry_price !== null) {
           const direction = parsedData.direction.toLowerCase();
           const risk = Math.abs(parsedData.entry_price - parsedData.stop_loss);
           const reward = Math.abs(parsedData.target_price - parsedData.entry_price);
 
-          parsedData.risk_reward = direction === 'long' ? 
-            reward / risk : 
-            risk / reward;
+          if (risk === 0) {
+             parsedData.risk_reward = null; // Avoid division by zero
+          } else {
+            parsedData.risk_reward = direction === 'long' ? 
+              reward / risk : 
+              risk / reward;
+          }
         }
 
         return {
@@ -243,8 +268,11 @@ Return format (JSON):
         };
       }
     } catch (e) {
-      console.log('Failed to parse trade data:', e);
+      console.error('Failed to parse trade data:', e);
+      console.log('Problematic AI response:', result); // Log the raw response that failed parsing
     }
+    // Return null instead of throwing so the chat can continue
+    return null;
   } catch (error) {
     console.error('Error analyzing trade idea:', error);
     // Return null instead of throwing so the chat can continue

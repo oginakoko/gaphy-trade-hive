@@ -48,7 +48,8 @@ export const useNotifications = () => {
     useEffect(() => {
         if (!user) return;
 
-        const channel = supabase
+        // Channel for notifications
+        const notificationsChannel = supabase
             .channel(`notifications:${user.id}`)
             .on(
                 'postgres_changes',
@@ -105,11 +106,59 @@ export const useNotifications = () => {
             )
             .subscribe();
 
+        // Channel for private messages
+        const messagesChannel = supabase
+            .channel(`messages:${user.id}`)
+            .on(
+                'postgres_changes',
+                { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'private_messages', 
+                    filter: `recipient_id=eq.${user.id}` 
+                },
+                async (payload) => {
+                    const message = payload.new as { sender_id: string, content: string, is_broadcast: boolean };
+                    const { data: sender } = await supabase.from('profiles').select('username').eq('id', message.sender_id).single();
+                    
+                    toast({
+                        title: message.is_broadcast ? 'Broadcast Message' : 'New Message',
+                        description: `${sender?.username || 'Someone'}: ${message.content.slice(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+                        className: 'bg-brand-green/10 border-brand-green/20',
+                    });
+                }
+            ).subscribe();
+
+        // Channel for follows
+        const followsChannel = supabase
+            .channel(`follows:${user.id}`)
+            .on(
+                'postgres_changes',
+                { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'user_follows', 
+                    filter: `following_id=eq.${user.id}` 
+                },
+                async (payload) => {
+                    const follow = payload.new as { follower_id: string };
+                    const { data: follower } = await supabase.from('profiles').select('username').eq('id', follow.follower_id).single();
+                    
+                    toast({
+                        title: 'New Follower',
+                        description: `${follower?.username || 'Someone'} started following you`,
+                        className: 'bg-brand-green/10 border-brand-green/20',
+                    });
+                }
+            ).subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            notificationsChannel.unsubscribe();
+            messagesChannel.unsubscribe();
+            followsChannel.unsubscribe();
         };
     }, [user, queryClient]);
-
+    
     const markAsReadMutation = useMutation({
         mutationFn: async (notificationIds: string[]) => {
             const { error } = await supabase
