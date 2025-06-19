@@ -46,8 +46,8 @@ export function useMessages(): UseMessagesReturn {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
-        .in('id', Array.from(userIds || []));
+        .select('id, username, avatar_url, email, is_admin')
+        .in('id', [...userIds]);
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);

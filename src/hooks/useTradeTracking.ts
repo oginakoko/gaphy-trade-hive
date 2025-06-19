@@ -4,13 +4,23 @@ import { useEffect } from 'react';
 import { analyzeTradeIdea, TradeData } from '@/lib/openrouter';
 import { useAuth } from './useAuth';
 
-export interface TradeTracking extends TradeData {
+export interface TradeTracking {
   id: string;
   trade_idea_id: string;
+  asset: string;
+  direction: 'Long' | 'Short';
+  entry_price?: number;
+  exit_price?: number;
+  target_price?: number;
+  stop_loss?: number;
+  risk_reward?: number;
+  status: 'open' | 'closed' | 'cancelled';
   created_at: string;
   updated_at: string;
   closed_at?: string;
   user_id: string;
+  sentiment?: 'Bullish' | 'Bearish' | 'Neutral';
+  key_points?: string[];
 }
 
 export const useTradeTracking = (tradeIdeaId?: string) => {
@@ -57,9 +67,14 @@ export const useTradeTracking = (tradeIdeaId?: string) => {
   // Update an existing trade
   const updateTrade = useMutation({
     mutationFn: async ({ id, ...data }: Partial<TradeTracking> & { id: string }) => {
+      const payload = {
+        ...data,
+        updated_at: new Date().toISOString()
+      };
+
       const { data: updatedTrade, error } = await supabase
         .from('trade_tracking')
-        .update(data)
+        .update(payload)
         .eq('id', id)
         .select()
         .single();
@@ -74,12 +89,12 @@ export const useTradeTracking = (tradeIdeaId?: string) => {
 
   // Close a trade
   const closeTrade = useMutation({
-    mutationFn: async ({ id, exitPrice }: { id: string; exitPrice: number }) => {
+    mutationFn: async ({ id, exit_price }: { id: string; exit_price: number }) => {
       const { data: closedTrade, error } = await supabase
         .from('trade_tracking')
         .update({
           status: 'closed',
-          exit_price: exitPrice,
+          exit_price,
           closed_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -100,8 +115,10 @@ export const useTradeTracking = (tradeIdeaId?: string) => {
     const tradeData = await analyzeTradeIdea(content);
     
     if (tradeData && tradeIdeaId) {
+      // Omit sentiment and key_points before sending to Supabase
+      const { key_points, sentiment, ...rest } = tradeData;
       return createTrade.mutateAsync({
-        ...tradeData,
+        ...rest,
         trade_idea_id: tradeIdeaId,
         user_id: user.id
       });

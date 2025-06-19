@@ -1,4 +1,3 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,7 +31,7 @@ const formSchema = z.object({
   instrument: z.string().min(1, 'Instrument is required'),
   breakdown: z.string().min(1, 'Breakdown is required'),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  tags: z.string().optional(),
+  tags: z.string().optional().transform((str) => str?.split(',').map((tag) => tag.trim()).filter(Boolean) || []),
 });
 
 type TradeIdeaFormValues = z.infer<typeof formSchema>;
@@ -63,7 +62,7 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
 
   // Fetch existing media items when editing
   useEffect(() => {
-    if (initialData) {
+    if (initialData?.id) {
       const fetchMedia = async () => {
         const { data, error } = await supabase
           .from('trade_idea_media')
@@ -73,19 +72,35 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
 
         if (!error && data) {
           setMediaItems(data.map(item => ({
-            id: item.id,
+            id: item.id.toString(), // Ensure ID is string for consistency
             type: item.media_type as 'image' | 'video' | 'link',
             url: item.url,
             title: item.title || undefined,
             description: item.description || undefined,
             thumbnail_url: item.thumbnail_url || undefined
           })));
+          
+          // Add media placeholders to breakdown if they don't exist
+          const breakdown = form.getValues('breakdown');
+          const hasPlaceholders = data.some(item => 
+            breakdown.includes(`[MEDIA:${item.id}]`)
+          );
+          
+          if (!hasPlaceholders) {
+            let updatedBreakdown = breakdown;
+            data.forEach(item => {
+              if (!updatedBreakdown.includes(`[MEDIA:${item.id}]`)) {
+                updatedBreakdown += `\n\n[MEDIA:${item.id}]\n\n`;
+              }
+            });
+            form.setValue('breakdown', updatedBreakdown.trim());
+          }
         }
       };
 
       fetchMedia();
     }
-  }, [initialData]);
+  }, [initialData, form]);
 
   const isEditing = !!initialData;
 
@@ -131,36 +146,15 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
   };
 
   const mutation = useMutation({
-    mutationFn: async (ideaData: Omit<TradeIdeaFormValues, 'tags'> & { tags: string[] }) => {
-      if (!user || user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
-        throw new Error("You are not authorized to perform this action.");
-      }
+    mutationFn: async (values: TradeIdeaFormValues) => {
+      if (!user) throw new Error('User not authenticated');
 
-      // Ensure profile exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        throw new Error(`Failed to check for profile: ${profileError.message}`);
-      }
-      
-      if (!profile) {
-        const newUsername = user.email?.split('@')[0] || `user_${user.id.substring(0, 4)}`;
-        const { error: createProfileError } = await supabase
-          .from('profiles')
-          .insert({ id: user.id, username: newUsername });
-        
-        if (createProfileError) {
-          throw new Error(`Failed to create user profile: ${createProfileError.message}`);
-        }
-      }
-
-      const dataToUpsert = {
-        ...ideaData,
-        image_url: ideaData.image_url || null,
+      const ideaData = {
+        title: values.title,
+        instrument: values.instrument,
+        breakdown: values.breakdown,
+        tags: values.tags,
+        image_url: values.image_url || null,
       };
 
       let tradeIdeaId: number;
@@ -169,23 +163,13 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
         tradeIdeaId = initialData.id;
         const { error } = await supabase
           .from('trade_ideas')
-          .update(dataToUpsert)
+          .update(ideaData)
           .eq('id', tradeIdeaId);
         if (error) throw new Error(error.message);
-
-        // Delete existing media items
-        const { error: deleteError } = await supabase
-          .from('trade_idea_media')
-          .delete()
-          .eq('trade_idea_id', tradeIdeaId);
-        if (deleteError) throw new Error(deleteError.message);
       } else {
         const { data: newIdea, error } = await supabase
           .from('trade_ideas')
-          .insert([{
-            ...dataToUpsert,
-            user_id: user.id,
-          }])
+          .insert([{ ...ideaData, user_id: user.id }])
           .select()
           .single();
         if (error) throw new Error(error.message);
@@ -193,12 +177,37 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
       }
 
       // Process media items
+      const mediaToKeep = new Set<string>();
+      
+      // First delete any media items that were removed
+      if (isEditing) {
+        const { data: existingMedia } = await supabase
+          .from('trade_idea_media')
+          .select('id')
+          .eq('trade_idea_id', tradeIdeaId);
+          
+        if (existingMedia) {
+          const existingIds = existingMedia.map(m => m.id.toString());
+          const currentIds = mediaItems.map(m => m.id);
+          const toDelete = existingIds.filter(id => !currentIds.includes(id));
+          
+          if (toDelete.length > 0) {
+            const { error: deleteError } = await supabase
+              .from('trade_idea_media')
+              .delete()
+              .in('id', toDelete.map(Number));
+            if (deleteError) throw new Error(deleteError.message);
+          }
+        }
+      }
+      
+      // Then update/create remaining media items
       for (let i = 0; i < mediaItems.length; i++) {
         const item = mediaItems[i];
         let finalUrl = item.url;
 
         if (item.file) {
-          // Upload file to appropriate bucket
+          // Upload new file
           const bucket = item.type === 'image' ? 'trade-images' : 'trade-videos';
           const fileExt = item.file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
@@ -207,34 +216,50 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
           const { error: uploadError } = await supabase.storage
             .from(bucket)
             .upload(filePath, item.file);
-
           if (uploadError) throw uploadError;
 
           const { data: urlData } = supabase.storage
             .from(bucket)
             .getPublicUrl(filePath);
-
           finalUrl = urlData.publicUrl;
         }
 
-        // Save media item
-        const { error: mediaError } = await supabase
-          .from('trade_idea_media')
-          .insert([{
-            trade_idea_id: tradeIdeaId,
-            media_type: item.type,
-            url: finalUrl,
-            title: item.title,
-            description: item.description,
-            thumbnail_url: item.thumbnail_url,
-            position: i,
-          }]);
+        const mediaData = {
+          trade_idea_id: tradeIdeaId,
+          media_type: item.type,
+          url: finalUrl,
+          title: item.title || null,
+          description: item.description || null,
+          thumbnail_url: item.thumbnail_url || null,
+          position: i,
+        };
 
-        if (mediaError) throw new Error(mediaError.message);
+        if (isEditing && !isNaN(Number(item.id))) {
+          // Update existing media item
+          const { error } = await supabase
+            .from('trade_idea_media')
+            .update(mediaData)
+            .eq('id', Number(item.id));
+          if (error) throw new Error(error.message);
+        } else {
+          // Create new media item
+          const { error } = await supabase
+            .from('trade_idea_media')
+            .insert([mediaData]);
+          if (error) throw new Error(error.message);
+        }
+        
+        mediaToKeep.add(item.id);
       }
+
+      return { tradeIdeaId, mediaToKeep };
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: `Trade idea has been ${isEditing ? 'updated' : 'posted'}.` });
+      toast({ 
+        title: 'Success', 
+        description: `Trade idea has been ${isEditing ? 'updated' : 'posted'}`,
+        variant: 'destructive' 
+      });
       queryClient.invalidateQueries({ queryKey: ['tradeIdeas'] });
       setOpen(false);
       form.reset();
@@ -249,13 +274,12 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
   });
 
   const onSubmit = (values: TradeIdeaFormValues) => {
-    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) ?? [];
     const capitalizedTitle = values.title
       .split(' ')
       .map(word => word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '')
       .join(' ');
 
-    mutation.mutate({ ...values, title: capitalizedTitle, tags: tagsArray });
+    mutation.mutate({ ...values, title: capitalizedTitle });
   };
 
   return (

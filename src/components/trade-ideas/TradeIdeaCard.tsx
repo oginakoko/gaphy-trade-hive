@@ -1,4 +1,3 @@
-
 import { TradeIdea } from '@/types';
 import { ArrowUpRight, Edit, Share } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -111,6 +110,22 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
             initialLikesCount={likesCount} 
             initialIsLiked={userHasLiked}
           />
+        </div>
+        {/* Trade ID for AI reference */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-gray-400">Trade ID:</span>
+          <span className="text-xs font-mono text-brand-green select-all">{idea.id}</span>
+          <Button
+            size="xs"
+            variant="ghost"
+            className="p-1 h-6 w-6 text-xs text-gray-400 hover:text-brand-green"
+            onClick={() => {
+              navigator.clipboard.writeText(String(idea.id));
+              toast({ title: 'Trade ID Copied', description: `ID ${idea.id} copied to clipboard.` });
+            }}
+          >
+            Copy
+          </Button>
         </div>
 
         <div className="flex items-center justify-between text-gray-400 mt-auto pt-2 border-t border-white/10">

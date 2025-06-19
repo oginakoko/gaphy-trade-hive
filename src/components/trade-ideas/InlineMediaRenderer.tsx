@@ -139,10 +139,9 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
         const mediaItem = mediaItems.find(item => item.id === mediaId);
         
         if (mediaItem) {
+          // Use mediaId for key
           return (
-            <React.Fragment key={`media-${index}`}>
-              {renderMediaContent(mediaItem)}
-            </React.Fragment>
+            <div key={`media-${mediaId}`}>{renderMediaContent(mediaItem)}</div>
           );
         }
         return null;

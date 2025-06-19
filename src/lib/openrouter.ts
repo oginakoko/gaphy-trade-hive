@@ -238,6 +238,9 @@ Return format (JSON):
         }
       }
 
+      // Sanitize: replace numbers ending with a period (e.g., 38.) with 38.0
+      jsonString = jsonString.replace(/(\d+)\.(?=\s*[\,\}])/g, '$1.0');
+
       const parsedData = JSON.parse(jsonString);
 
       if (parsedData && parsedData.asset && parsedData.direction) {

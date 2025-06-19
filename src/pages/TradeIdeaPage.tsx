@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -166,9 +165,29 @@ const TradeIdeaPage = () => {
                 </div>
               </div>
 
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-gray-400">Trade ID:</span>
+                <span className="text-xs font-mono text-brand-green select-all">{idea.id}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="p-1 h-6 w-6 text-xs text-gray-400 hover:text-brand-green"
+                  onClick={() => {
+                    navigator.clipboard.writeText(String(idea.id));
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
               <div className="prose prose-invert max-w-none">
                 <InlineMediaRenderer content={idea.breakdown} mediaItems={idea.media || []} />
               </div>
+              {/* Show a message if no AI trade analysis is available */}
+              {(!trades || trades.length === 0) && (
+                <div className="my-6 p-4 rounded-lg bg-yellow-900/20 border border-yellow-700 text-yellow-200 text-sm">
+                  <span>No AI trade analysis was generated for this idea. If this is a new idea, try editing the breakdown to include explicit entry, target, and stop values, then refresh.</span>
+                </div>
+              )}
 
               {trades && trades.length > 0 && (
                 <TradeTrackingTable trades={trades} />
