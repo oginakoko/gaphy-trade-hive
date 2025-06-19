@@ -158,7 +158,7 @@ const TradeIdeaPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <LikeButton 
-                    tradeIdeaId={String(idea.id)} 
+                    tradeIdeaId={String(idea.id)}
                     initialLikesCount={idea.likes?.[0]?.count || 0}
                     initialIsLiked={!!userHasLiked}
                   />
@@ -173,7 +173,7 @@ const TradeIdeaPage = () => {
                 <TradeTrackingTable trades={trades} />
               )}
 
-              <Comments tradeIdeaId={Number(idea.id)} />
+              <Comments tradeIdeaId={idea.id} />
             </div>
           </div>
         </div>
