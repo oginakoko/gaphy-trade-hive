@@ -1,3 +1,4 @@
+
 import { Twitter, Instagram, Link, BarChart, BookOpen, ShoppingCart } from 'lucide-react';
 
 export type TradeIdea = {
@@ -34,6 +35,7 @@ export type Profile = {
   avatar_url: string | null;
   updated_at: string;
   is_banned?: boolean;
+  is_admin?: boolean;
 };
 
 export type Ad = {

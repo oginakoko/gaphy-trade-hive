@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -159,7 +158,7 @@ const TradeIdeaPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <LikeButton 
-                    tradeIdeaId={idea.id.toString()} 
+                    tradeIdeaId={String(idea.id)} 
                     initialLikesCount={idea.likes?.[0]?.count || 0}
                     initialIsLiked={!!userHasLiked}
                   />
