@@ -249,61 +249,34 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-full max-w-md">
-      <Card className="bg-gray-900 text-white border-gray-700 shadow-lg">
-        <div className="flex justify-between items-center p-4 border-b border-gray-700">
-          <div className="flex items-center space-x-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
+      <Card className="w-full max-w-md sm:max-w-lg h-full sm:h-auto flex flex-col bg-gray-900 border border-gray-700 shadow-lg rounded-none sm:rounded-2xl">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <div className="flex items-center gap-2">
             <Bot className="h-6 w-6 text-brand-green" />
-            <h3 className="text-lg font-semibold">AlphaFinder AI</h3>
-            {isBotThinking && <Loader2 className="h-4 w-4 animate-spin text-brand-green" />}
+            <span className="font-bold text-lg text-white">AlphaFinder AI</span>
           </div>
-          <div className="flex items-center space-x-2">
-             <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClearChat}
-                className="text-gray-400 hover:text-white"
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-gray-400 hover:text-white"
-            >
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleClearChat} className="text-gray-400 hover:text-red-400">
+              <Trash2 className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-400 hover:text-white">
               <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
-        <ScrollArea className="h-80 p-4">
-          <div className="space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'flex',
-                  message.sender === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                <div
-                  className={cn(
-                    'max-w-[80%] rounded-lg px-4 py-2',
-                    message.sender === 'user'
-                      ? 'bg-brand-green/20 text-white'
-                      : 'bg-gray-800 text-white prose prose-invert'
-                  )}
-                >
-                  {message.imageUrl && (
-                    <img src={message.imageUrl} alt="Uploaded content" className="max-w-full h-auto rounded mb-2" />
-                  )}
+        <ScrollArea className="flex-1 overflow-y-auto px-2 py-4 sm:px-4">
+          <div className="space-y-4" ref={scrollViewport}>
+            {messages.map((message, idx) => (
+              <div key={idx} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}> 
+                <div className={`rounded-lg px-4 py-2 max-w-[80vw] sm:max-w-[70%] ${message.sender === 'user' ? 'bg-brand-green text-black' : 'bg-gray-800 text-white'}`}> 
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
                 </div>
               </div>
             ))}
           </div>
         </ScrollArea>
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 flex items-center space-x-2">
+        <form onSubmit={handleSendMessage} className="p-2 sm:p-4 border-t border-gray-700 flex items-center space-x-2">
            <input
             type="file"
             ref={fileInputRef}
@@ -325,7 +298,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isBotThinking ? 'Thinking...' : waitingForTradeIdeaId ? 'Enter Trade Idea ID...' : 'Ask AlphaFinder...'}
-            className="flex-1 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+            className="flex-1 bg-gray-800 border-gray-700 text-white placeholder-gray-400 min-w-0"
             disabled={isBotThinking || isUploading}
           />
           <Button type="submit" disabled={!input.trim() || isBotThinking || isUploading} className="bg-brand-green hover:bg-brand-green/90">

@@ -16,6 +16,7 @@ import LikeButton from '@/components/trade-ideas/LikeButton';
 import InlineMediaRenderer from '@/components/trade-ideas/InlineMediaRenderer';
 import { useTradeTracking } from '@/hooks/useTradeTracking';
 import { TradeTrackingTable } from '@/components/trade-ideas/TradeTrackingTable';
+import MetaTags from '@/components/meta-tags';
 
 interface ExtendedTradeIdea extends TradeIdea {
   media: MediaItem[];
@@ -136,24 +137,32 @@ const TradeIdeaPage = () => {
 
   return (
     <>
+      {idea && (
+        <MetaTags
+          title={idea.title}
+          description={idea.breakdown.replace(/\[MEDIA:[^\]]+\]/g, '').replace(/[#*_`>\-]/g, '').slice(0, 160) || 'Trade idea on GaphyHive'}
+          image={idea.media?.find(m => m.type === 'image')?.url || idea.image_url || 'https://gaphyhive.lovable.app/logo.svg'}
+          url={`${window.location.origin}/trade-ideas/${idea.id}`}
+        />
+      )}
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <Button asChild variant="ghost" className="mb-4 -ml-4">
+      <main className="container mx-auto px-2 py-4 sm:px-4 sm:py-8">
+        <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
+          <Button asChild variant="ghost" className="mb-2 -ml-2 sm:mb-4 sm:-ml-4">
             <Link to="/analysis" className="flex items-center gap-2 text-brand-green hover:text-brand-green/80">
               <ArrowLeft size={16} />
               Back to Analysis
             </Link>
           </Button>
 
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-4 gap-2 sm:gap-0">
                 <div className="flex items-center gap-4">
-                  <img src={authorAvatar} alt={authorName} className="h-12 w-12 rounded-full" />
+                  <img src={authorAvatar} alt={authorName} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full" />
                   <div>
-                    <h1 className="text-2xl font-bold text-white">{idea.title}</h1>
-                    <p className="text-brand-green">{idea.instrument}</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white break-words">{idea.title}</h1>
+                    <p className="text-brand-green text-sm sm:text-base">{idea.instrument}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -165,7 +174,7 @@ const TradeIdeaPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-4 flex-wrap">
                 <span className="text-xs text-gray-400">Trade ID:</span>
                 <span className="text-xs font-mono text-brand-green select-all">{idea.id}</span>
                 <Button
@@ -179,21 +188,25 @@ const TradeIdeaPage = () => {
                   Copy
                 </Button>
               </div>
-              <div className="prose prose-invert max-w-none">
+              <div className="prose prose-invert max-w-none text-sm sm:text-base">
                 <InlineMediaRenderer content={idea.breakdown} mediaItems={idea.media || []} />
               </div>
               {/* Show a message if no AI trade analysis is available */}
               {(!trades || trades.length === 0) && (
-                <div className="my-6 p-4 rounded-lg bg-yellow-900/20 border border-yellow-700 text-yellow-200 text-sm">
+                <div className="my-4 sm:my-6 p-3 sm:p-4 rounded-lg bg-yellow-900/20 border border-yellow-700 text-yellow-200 text-xs sm:text-sm">
                   <span>No AI trade analysis was generated for this idea. If this is a new idea, try editing the breakdown to include explicit entry, target, and stop values, then refresh.</span>
                 </div>
               )}
 
               {trades && trades.length > 0 && (
-                <TradeTrackingTable trades={trades} />
+                <div className="mt-4 sm:mt-8">
+                  <TradeTrackingTable trades={trades} />
+                </div>
               )}
 
-              <Comments tradeIdeaId={String(idea.id)} />
+              <div className="mt-4 sm:mt-8">
+                <Comments tradeIdeaId={String(idea.id)} />
+              </div>
             </div>
           </div>
         </div>

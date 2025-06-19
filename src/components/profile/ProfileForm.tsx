@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
@@ -80,44 +79,31 @@ const ProfileForm = () => {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
+              <AvatarUploader value={form.watch('avatar_url')} onChange={url => form.setValue('avatar_url', url)} />
+              <div className="flex-1 w-full">
                 <FormField
-                    control={form.control}
-                    name="avatar_url"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Avatar</FormLabel>
-                            <FormControl>
-                                <AvatarUploader 
-                                    value={field.value || undefined}
-                                    onChange={field.onChange}
-                                    username={form.getValues('username')}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Username</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-gray-800 border-gray-700 text-white w-full max-w-xs sm:max-w-sm" placeholder="Enter your username" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                
-                <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Your cool username" {...field} value={field.value || ''} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <Button type="submit" disabled={updateProfileMutation.isPending}>
-                    {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Update Profile
-                </Button>
-            </form>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center sm:items-end">
+              <Button type="submit" className="w-full sm:w-auto bg-brand-green hover:bg-brand-green/90 text-black font-semibold">
+                {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
         </Form>
     );
 };

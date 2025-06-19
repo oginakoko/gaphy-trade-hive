@@ -6,10 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useFollows } from '@/hooks/useFollows';
-import { Loader2, MessageCircle } from 'lucide-react';
+import { Loader2, MessageCircle, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { useMediaQuery } from 'react-responsive';
 
 export function MessagesDialog() {
   const { toast } = useToast();
@@ -21,6 +22,7 @@ export function MessagesDialog() {
   const [messageText, setMessageText] = useState('');
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const isMobile = useMediaQuery({ maxWidth: 768 });
 
   const filteredConversations = conversations ?? [];
 
@@ -62,23 +64,25 @@ export function MessagesDialog() {
       <Button
         onClick={() => setIsOpen(true)}
         className="relative bg-transparent hover:bg-gray-800"
+        style={{ color: '#00FFB0', opacity: 1, filter: 'drop-shadow(0 0 2px #00FFB0)' }}
+        aria-label="Open messages"
       >
         <MessageCircle className="h-5 w-5" />
         {conversations.some(conv => conv.unread_count > 0) && (
           <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-brand-green" />
         )}
       </Button>
-      <DialogContent className="max-w-md sm:max-w-xl bg-gray-900 border-gray-700">
+      <DialogContent aria-describedby="messages-dialog-desc" className={`bg-gray-900 border-gray-700 ${isMobile ? 'w-full h-full max-w-full p-0 rounded-none' : 'max-w-md sm:max-w-xl'} `}>
         <DialogHeader>
-          <DialogTitle className="text-white">Messages</DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogTitle id="messages-dialog-title" className="text-white">Messages</DialogTitle>
+          <DialogDescription id="messages-dialog-desc" className="text-gray-400">
             Chat with any user in the platform
           </DialogDescription>
         </DialogHeader>
-        <div className="flex h-[500px]">
+        <div className={`flex ${isMobile ? 'flex-col h-[100dvh]' : 'h-[500px]'}`}> 
           {/* Conversations List */}
-          <div className="w-1/3 border-r border-gray-700 pr-4">
-            <div className="flex justify-between items-center mb-4">
+          <div className={`${isMobile ? (selectedChat ? 'hidden' : 'block') : 'w-1/3 border-r border-gray-700 pr-4'} ${isMobile ? 'w-full border-none pr-0' : ''}`}>
+            <div className="flex justify-between items-center mb-4 px-2 pt-2">
               <h3 className="text-sm font-medium text-white">Messages</h3>
               <Button
                 onClick={() => setIsNewMessageOpen(true)}
@@ -87,7 +91,7 @@ export function MessagesDialog() {
                 New Message
               </Button>
             </div>
-            <ScrollArea className="h-[460px]">
+            <ScrollArea className={`${isMobile ? 'h-[calc(100dvh-120px)]' : 'h-[460px]'}`}> 
               <div className="space-y-2">
                   {filteredConversations.map((conv) => (
                     <button
@@ -141,10 +145,18 @@ export function MessagesDialog() {
           </div>
 
           {/* Chat Window */}
-          <div className="flex-1 pl-4 flex flex-col">
+          <div className={`flex-1 pl-4 flex flex-col ${isMobile ? (selectedChat ? 'block w-full h-full' : 'hidden') : ''}`}>
             {selectedChat ? (
               <>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-4 px-2 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`md:hidden mr-2`}
+                    onClick={() => setSelectedChat(null)}
+                  >
+                    <ChevronDown className="h-5 w-5 rotate-90" />
+                  </Button>
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={selectedConversation.other_user_avatar} />
                     <AvatarFallback>
@@ -180,7 +192,7 @@ export function MessagesDialog() {
                     ))}
                   </div>
                 </ScrollArea>
-                <form onSubmit={handleSendMessage} className="mt-4">
+                <form onSubmit={handleSendMessage} className="mt-4 px-2 pb-2">
                   <div className="flex gap-2">
                     <Input
                       value={messageText}

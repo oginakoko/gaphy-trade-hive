@@ -1,4 +1,3 @@
-
 import { useServers } from '@/hooks/useServers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,50 +47,48 @@ const OwnedServers = () => {
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-semibold text-white">My Servers ({ownedServers.length})</h3>
-      <div className="grid gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {ownedServers.map((server) => (
-          <Card key={server.id} className="glass-card">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={server.image_url || undefined} />
-                    <AvatarFallback className="bg-brand-green text-black font-bold">
-                      {server.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-white text-lg">{server.name}</CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Users size={14} />
-                      <span>{server.member_count || 0} members</span>
-                      {server.is_public ? (
-                        <div className="flex items-center gap-1">
-                          <Eye size={14} />
-                          <span>Public</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <EyeOff size={14} />
-                          <span>Private</span>
-                        </div>
-                      )}
-                    </div>
+          <Card key={server.id} className="glass-card cursor-pointer transition-shadow hover:shadow-lg hover:border-brand-green/40 focus:ring-2 focus:ring-brand-green outline-none" onClick={() => window.location.href = `/servers/${server.id}`} tabIndex={0} role="button" aria-label={`Go to server ${server.name}`}> 
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={server.image_url || undefined} />
+                  <AvatarFallback className="bg-brand-green text-black font-bold">
+                    {server.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-white text-base sm:text-lg">{server.name}</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-400">
+                    <Users size={14} />
+                    <span>{server.member_count || 0} members</span>
+                    {server.is_public ? (
+                      <div className="flex items-center gap-1">
+                        <Eye size={14} />
+                        <span>Public</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <EyeOff size={14} />
+                        <span>Private</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleShareServer(server.id)}
-                  className="flex items-center gap-2"
-                >
-                  <Share2 size={14} />
-                  {copiedServerId === server.id ? 'Copied!' : 'Share'}
-                </Button>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={e => { e.stopPropagation(); handleShareServer(server.id); }}
+                className="flex items-center gap-2 ml-auto"
+              >
+                <Share2 size={14} />
+                {copiedServerId === server.id ? 'Copied!' : 'Share'}
+              </Button>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-300 mb-3">{server.description}</p>
+              <p className="text-gray-300 mb-2 text-sm sm:text-base">{server.description}</p>
               <p className="text-xs text-gray-500">
                 Created {new Date(server.created_at).toLocaleDateString()}
               </p>

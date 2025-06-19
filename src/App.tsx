@@ -27,58 +27,61 @@ import ShortlinkRedirect from "./pages/ShortlinkRedirect";
 import CreateTradeIdea from "./pages/CreateTradeIdea";
 import Support from "./pages/Support";
 import AdminMessages from "./pages/admin/messages";
+import { HelmetProvider } from 'react-helmet-async';
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <MainLayout>
-            <Routes>
-              <Route element={<GuestGuard />}>
-                <Route path="/" element={<Index />} />
-              </Route>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/trade-ideas/:id" element={<TradeIdeaPage />} />
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <MainLayout>
+              <Routes>
+                <Route element={<GuestGuard />}>
+                  <Route path="/" element={<Index />} />
+                </Route>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/trade-ideas/:id" element={<TradeIdeaPage />} />
 
-              {/* Routes for authenticated (non-admin) users */}
-              <Route element={<AuthGuard />}>
-                <Route path="/analysis" element={<Analysis />} />
-                <Route path="/servers" element={<Servers />} />
-                <Route path="/servers/:serverId" element={<Servers />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/create-ad" element={<CreateAd />} />
-                <Route path="/support" element={<Support />} />
-              </Route>
+                {/* Routes for authenticated (non-admin) users */}
+                <Route element={<AuthGuard />}>
+                  <Route path="/analysis" element={<Analysis />} />
+                  <Route path="/servers" element={<Servers />} />
+                  <Route path="/servers/:serverId" element={<Servers />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/create-ad" element={<CreateAd />} />
+                  <Route path="/support" element={<Support />} />
+                </Route>
 
-              {/* Admin-only routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
-                <Route path="/admin/ads" element={<ManageAds />} />
-                <Route path="/admin/messages" element={<AdminMessages />} />
-                <Route path="/admin/donations" element={<DonationsLog />} />
-                <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
-                <Route path="/admin/users" element={<ManageUsers />} />
-                <Route path="/admin/api-keys" element={<ManageApiKeys />} />
-                <Route path="/create-trade-idea" element={<CreateTradeIdea />} />
-              </Route>
-              
-              {/* Redirect route for shortlinks */}
-              <Route path="/s/:code" element={<ShortlinkRedirect />} />
+                {/* Admin-only routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/trade-ideas" element={<ManageTradeIdeas />} />
+                  <Route path="/admin/ads" element={<ManageAds />} />
+                  <Route path="/admin/messages" element={<AdminMessages />} />
+                  <Route path="/admin/donations" element={<DonationsLog />} />
+                  <Route path="/admin/affiliate-links" element={<ManageAffiliateLinks />} />
+                  <Route path="/admin/users" element={<ManageUsers />} />
+                  <Route path="/admin/api-keys" element={<ManageApiKeys />} />
+                  <Route path="/create-trade-idea" element={<CreateTradeIdea />} />
+                </Route>
+                
+                {/* Redirect route for shortlinks */}
+                <Route path="/s/:code" element={<ShortlinkRedirect />} />
 
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </MainLayout>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </MainLayout>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

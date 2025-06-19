@@ -58,13 +58,13 @@ const Header = () => {
             Servers
           </Link>
           {session && (
-            <>
-              <MessagesDialog />
-              <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </Link>
-            </>
+            <MessagesDialog />
+          )}
+          {session && (
+            <Link to="/profile" className="text-gray-300 hover:text-white transition-colors flex items-center">
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </Link>
           )}
         </nav>
 

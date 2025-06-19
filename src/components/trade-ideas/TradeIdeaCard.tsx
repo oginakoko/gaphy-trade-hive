@@ -55,7 +55,7 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
   };
 
   return (
-    <div className="relative group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10 h-full">
+    <div className="relative group glass-card rounded-xl overflow-hidden animate-fade-in-up flex flex-col transition-all duration-300 hover:border-brand-green/40 hover:shadow-xl hover:shadow-brand-green/10 h-full w-full max-w-full">
       <div className="absolute top-2 right-2 z-10 flex gap-1">
         <Button
           size="sm"
@@ -76,17 +76,16 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
           </Button>
         )}
       </div>
-      
       <Link to={`/trade-ideas/${idea.id}`} className="block">
         <div className="relative">
           {firstImage ? (
             <img 
               src={firstImage} 
               alt={idea.title} 
-              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-40 sm:h-48 object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="w-full h-48 bg-brand-gray-200/20 flex items-center justify-center">
+            <div className="w-full h-40 sm:h-48 bg-brand-gray-200/20 flex items-center justify-center">
               <ArrowUpRight size={24} className="text-gray-400" />
             </div>
           )}
@@ -97,8 +96,8 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
           </div>
         </div>
       </Link>
-
       <div className="p-3 flex flex-col flex-grow">
+        {/* Trade ID for AI reference and responsive tags, etc. */}
         <div className="flex items-center gap-2 mb-2">
           <img src={authorAvatar} alt={authorName} className="h-6 w-6 rounded-full bg-brand-gray-200 object-cover" />
           <div className="flex-grow">
