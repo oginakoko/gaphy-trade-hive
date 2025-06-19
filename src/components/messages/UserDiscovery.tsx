@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
+import { Loader2, UserPlus, UserMinus, MessageCircle, Search } from 'lucide-react';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuth } from '@/hooks/useAuth';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface UserDiscoveryProps {
   isOpen: boolean;
@@ -44,25 +46,33 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Discover Users</DialogTitle>
+      <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-700">
+        <DialogHeader className="pb-4 border-b border-gray-700">
+          <DialogTitle className="text-white text-xl">Discover Traders</DialogTitle>
+          <p className="text-gray-400">Find and connect with other traders in the community</p>
         </DialogHeader>
         <div className="space-y-4">
-          <Input
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <ScrollArea className="h-[400px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search traders by username..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-brand-green"
+            />
+          </div>
+          <ScrollArea className="h-[500px] pr-4">
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-green" />
               </div>
             ) : filteredUsers.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">
-                No users found
-              </p>
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="text-gray-400">
+                  {search ? 'No traders found matching your search' : 'No traders found'}
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {filteredUsers.map((profile) => {
@@ -70,67 +80,76 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
                   const isMutualFollow = checkMutualFollow(profile.id);
                   
                   return (
-                    <div
+                    <Card
                       key={profile.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                      className="p-4 bg-gray-800/50 border-gray-700 hover:bg-gray-800/80 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={profile.avatar_url} />
-                          <AvatarFallback>
-                            {profile.username?.[0]?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{profile.username || 'Unknown User'}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {profile.is_admin && (
-                              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                                Admin
-                              </span>
-                            )}
-                            {isMutualFollow && (
-                              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                                Mutual Follow
-                              </span>
-                            )}
-                            {isUserFollowing && !isMutualFollow && (
-                              <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                                Following
-                              </span>
-                            )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-12 w-12 border-2 border-gray-600">
+                            <AvatarImage src={profile.avatar_url} />
+                            <AvatarFallback className="bg-gray-700 text-white font-medium">
+                              {profile.username?.[0]?.toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold text-white">{profile.username || 'Unknown Trader'}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {profile.is_admin && (
+                                <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs font-medium">
+                                  Admin
+                                </span>
+                              )}
+                              {isMutualFollow && (
+                                <span className="bg-brand-green/20 text-brand-green px-2 py-1 rounded-full text-xs font-medium">
+                                  Mutual Follow
+                                </span>
+                              )}
+                              {isUserFollowing && !isMutualFollow && (
+                                <span className="bg-gray-500/20 text-gray-400 px-2 py-1 rounded-full text-xs font-medium">
+                                  Following
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isMutualFollow && (
+                        <div className="flex items-center gap-2">
+                          {isMutualFollow && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleStartChat(profile.id)}
+                              className="bg-brand-green hover:bg-brand-green/80 text-black font-medium"
+                            >
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                              Chat
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleStartChat(profile.id)}
+                            variant={isUserFollowing ? "secondary" : "default"}
+                            onClick={() => handleFollowToggle(profile.id)}
+                            className={cn(
+                              "font-medium",
+                              isUserFollowing 
+                                ? "bg-gray-600 hover:bg-gray-700 text-white" 
+                                : "bg-brand-green/20 hover:bg-brand-green/30 text-brand-green border border-brand-green/30"
+                            )}
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            {isUserFollowing ? (
+                              <>
+                                <UserMinus className="h-4 w-4 mr-1" />
+                                Unfollow
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                Follow
+                              </>
+                            )}
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant={isUserFollowing ? "secondary" : "default"}
-                          onClick={() => handleFollowToggle(profile.id)}
-                        >
-                          {isUserFollowing ? (
-                            <>
-                              <UserMinus className="h-4 w-4 mr-1" />
-                              Unfollow
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="h-4 w-4 mr-1" />
-                              Follow
-                            </>
-                          )}
-                        </Button>
+                        </div>
                       </div>
-                    </div>
+                    </Card>
                   );
                 })}
               </div>
