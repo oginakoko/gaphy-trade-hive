@@ -38,7 +38,7 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
     : cleanBreakdown;
 
   const handleSharePost = async (postId: string | number, title: string) => {
-    const shareUrl = `${window.location.origin}/trade-ideas/${postId}`;
+    const shareUrl = `${window.location.origin}/s/${postId}`; // Use the short URL for sharing
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedItemId(postId);
