@@ -1,4 +1,3 @@
-
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, CheckCircle, Loader2 } from 'lucide-react';
@@ -28,7 +27,8 @@ const ManageUsers = () => {
         queryFn: async (): Promise<Profile[]> => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) throw new Error(error.message);
             return data || [];

@@ -29,6 +29,7 @@ export interface Conversation {
     username: string | null;
     avatar_url: string | null;
     is_admin: boolean;
+    email?: string | null;
   };
   last_message?: Message;
   messages: Message[];

@@ -125,7 +125,7 @@ CREATE POLICY view_messages ON public.private_messages
         auth.uid() IN (sender_id, recipient_id) 
         OR EXISTS (
             SELECT 1 FROM profiles 
-            WHERE user_id = auth.uid() 
+            WHERE id = auth.uid() 
             AND is_admin = true
         )
     );
@@ -145,12 +145,12 @@ CREATE POLICY send_messages ON public.private_messages
             )
             OR EXISTS (
                 SELECT 1 FROM profiles 
-                WHERE user_id = auth.uid() 
+                WHERE id = auth.uid() 
                     AND is_admin = true
             )
             OR EXISTS (
                 SELECT 1 FROM profiles 
-                WHERE user_id = recipient_id 
+                WHERE id = recipient_id 
                     AND is_admin = true
             )
         )
@@ -185,7 +185,7 @@ create policy "Users can see messages they're part of"
         or auth.uid() = recipient_id 
         or exists (
             select 1 from profiles 
-            where user_id = auth.uid() 
+            where id = auth.uid() 
             and is_admin = true
         )
     );

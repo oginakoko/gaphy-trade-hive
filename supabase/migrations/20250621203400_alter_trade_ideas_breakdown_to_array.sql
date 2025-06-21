@@ -1,0 +1,1 @@
+ALTER TABLE trade_ideas ALTER COLUMN breakdown TYPE TEXT[] USING ARRAY[breakdown];

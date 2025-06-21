@@ -56,7 +56,7 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
       instrument: initialData?.instrument || '',
       breakdown: initialData?.breakdown || '',
       image_url: initialData?.image_url || '',
-      tags: initialData?.tags?.join(', ') || '',
+      tags: initialData?.tags || [],
     },
   });
 

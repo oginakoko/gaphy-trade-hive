@@ -4,15 +4,21 @@ import { supabase } from '@/lib/supabaseClient';
 import { TradeIdea, Ad, AffiliateLink } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
-const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
-    const { data: ideas, error } = await supabase
+const fetchTradeIdeas = async (page: number, itemsPerPage: number): Promise<{ ideas: TradeIdea[], totalCount: number }> => {
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage - 1;
+
+    const { data: ideas, error, count } = await supabase
         .from('trade_ideas')
-        .select('*, profiles(username, avatar_url), likes(count)')
-        .order('created_at', { ascending: false });
+        .select('*, profiles(username, avatar_url), likes(count)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(start, end);
 
     if (error) {
         throw new Error(error.message);
     }
+
+    const totalCount = count || 0;
 
     // Fetch media for all trade ideas
     const { data: mediaItems, error: mediaError } = await supabase
@@ -23,7 +29,8 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
 
     if (mediaError) {
         console.error('Error fetching media:', mediaError);
-        return ideas;
+        console.error('Error fetching media:', mediaError);
+        return { ideas, totalCount };
     }
 
     // Group media by trade idea ID
@@ -43,10 +50,12 @@ const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     }, {} as Record<number, any[]>);
 
     // Attach media to each trade idea
-    return ideas.map(idea => ({
+    const ideasWithMedia = ideas.map(idea => ({
         ...idea,
         media: mediaByIdeaId[idea.id] || []
     }));
+
+    return { ideas: ideasWithMedia, totalCount };
 };
 
 const fetchApprovedAds = async (): Promise<Ad[]> => {
@@ -76,13 +85,16 @@ const fetchAffiliateLinks = async (): Promise<AffiliateLink[]> => {
 
 export type FeedItem = (TradeIdea & { viewType: 'idea' }) | (Ad & { viewType: 'ad' });
 
-export const useAnalysisFeed = () => {
+export const useAnalysisFeed = (page: number, itemsPerPage: number) => {
     const { user } = useAuth();
     
-    const { data: tradeIdeas, isLoading: isLoadingIdeas, error: ideasError } = useQuery({
-        queryKey: ['tradeIdeas'], 
-        queryFn: fetchTradeIdeas
+    const { data: tradeIdeasData, isLoading: isLoadingIdeas, error: ideasError } = useQuery({
+        queryKey: ['tradeIdeas', page, itemsPerPage],
+        queryFn: () => fetchTradeIdeas(page, itemsPerPage)
     });
+
+    const tradeIdeas = tradeIdeasData?.ideas || [];
+    const totalIdeasCount = tradeIdeasData?.totalCount || 0;
     
     const { data: ads, isLoading: isLoadingAds, error: adsError } = useQuery({
         queryKey: ['approvedAds'],
@@ -167,5 +179,7 @@ export const useAnalysisFeed = () => {
       const isLoading = isLoadingIdeas || isLoadingAds || isLoadingAffiliates;
       const error = ideasError || adsError || affiliatesError;
 
-      return { feed, isLoading, error, userLikes };
+      const totalPages = Math.ceil(totalIdeasCount / itemsPerPage);
+
+      return { feed, isLoading, error, userLikes, totalPages, totalIdeasCount };
 };

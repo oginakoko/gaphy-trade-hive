@@ -110,7 +110,7 @@ export const useTradeTracking = (tradeIdeaId?: string) => {
   });
 
   // Analyze trade content
-  const analyzeTrade = async (content: string) => {
+  const analyzeTrade = async (content: string) => { // Ensure it expects a string
     if (!user) return null;
     const tradeData = await analyzeTradeIdea(content);
     

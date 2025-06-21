@@ -1,0 +1,268 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.ads (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  content text,
+  media_url text,
+  link_url text,
+  status USER-DEFINED NOT NULL DEFAULT 'pending_payment'::ad_status,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  cost numeric,
+  media_type text,
+  start_date timestamp with time zone,
+  end_date timestamp with time zone,
+  payment_proof_url text,
+  payment_method text,
+  CONSTRAINT ads_pkey PRIMARY KEY (id),
+  CONSTRAINT ads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.affiliate_links (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  title text NOT NULL,
+  description text,
+  url text NOT NULL,
+  icon text NOT NULL,
+  CONSTRAINT affiliate_links_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.app_config (
+  key text NOT NULL,
+  value text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT app_config_pkey PRIMARY KEY (key)
+);
+CREATE TABLE public.comments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  trade_idea_id bigint NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT comments_pkey PRIMARY KEY (id),
+  CONSTRAINT comments_trade_idea_id_fkey FOREIGN KEY (trade_idea_id) REFERENCES public.trade_ideas(id),
+  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.likes (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  trade_idea_id bigint NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT likes_pkey PRIMARY KEY (id),
+  CONSTRAINT likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT likes_trade_idea_id_fkey FOREIGN KEY (trade_idea_id) REFERENCES public.trade_ideas(id)
+);
+CREATE TABLE public.message_attachments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  message_id bigint,
+  url text NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['image'::text, 'video'::text, 'audio'::text, 'document'::text])),
+  filename text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT message_attachments_pkey PRIMARY KEY (id),
+  CONSTRAINT message_attachments_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.private_messages(id)
+);
+CREATE TABLE public.mpesa_transactions (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  phone_number text NOT NULL,
+  amount numeric NOT NULL,
+  checkout_request_id text NOT NULL UNIQUE,
+  merchant_request_id text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'pending'::text,
+  result_desc text,
+  mpesa_receipt_number text,
+  transaction_type text NOT NULL,
+  ad_id bigint,
+  user_id uuid,
+  CONSTRAINT mpesa_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT mpesa_transactions_ad_id_fkey FOREIGN KEY (ad_id) REFERENCES public.ads(id),
+  CONSTRAINT mpesa_transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  recipient_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  type text NOT NULL,
+  reference_id uuid,
+  server_id uuid,
+  is_read boolean NOT NULL DEFAULT false,
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id),
+  CONSTRAINT notifications_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id),
+  CONSTRAINT notifications_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.private_messages (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  sender_id uuid,
+  recipient_id uuid,
+  content text NOT NULL,
+  is_read boolean DEFAULT false,
+  is_broadcast boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT private_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT private_messages_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES auth.users(id),
+  CONSTRAINT private_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  username text UNIQUE CHECK (char_length(username) >= 3),
+  avatar_url text,
+  updated_at timestamp with time zone,
+  is_admin boolean NOT NULL DEFAULT false,
+  email text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.server_members (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  server_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role USER-DEFINED NOT NULL DEFAULT 'member'::server_role,
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT server_members_pkey PRIMARY KEY (id),
+  CONSTRAINT server_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT server_members_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id)
+);
+CREATE TABLE public.server_messages (
+  server_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  content text,
+  media_url text,
+  media_type USER-DEFINED,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  parent_message_id uuid,
+  updated_at timestamp with time zone DEFAULT now(),
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  CONSTRAINT server_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT server_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT server_messages_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id)
+);
+CREATE TABLE public.servers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  image_url text,
+  owner_id uuid NOT NULL DEFAULT auth.uid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_public boolean NOT NULL DEFAULT true,
+  CONSTRAINT servers_pkey PRIMARY KEY (id),
+  CONSTRAINT servers_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.short_urls (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  originalurl text NOT NULL,
+  shortcode text NOT NULL UNIQUE,
+  createdat timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT short_urls_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.shortlinks (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  short_code text NOT NULL UNIQUE,
+  original_url text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  clicks integer DEFAULT 0,
+  type text NOT NULL,
+  CONSTRAINT shortlinks_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.trade_analysis (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  trade_idea_id bigint,
+  analyzed_text text NOT NULL,
+  entry_price numeric,
+  exit_price numeric,
+  target_price numeric,
+  stop_loss numeric,
+  risk_reward numeric,
+  direction text CHECK (direction = ANY (ARRAY['Long'::text, 'Short'::text])),
+  asset text,
+  sentiment text CHECK (sentiment = ANY (ARRAY['Bullish'::text, 'Bearish'::text, 'Neutral'::text])),
+  key_points ARRAY,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT trade_analysis_pkey PRIMARY KEY (id),
+  CONSTRAINT trade_analysis_trade_idea_id_fkey FOREIGN KEY (trade_idea_id) REFERENCES public.trade_ideas(id)
+);
+CREATE TABLE public.trade_idea_media (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  trade_idea_id bigint NOT NULL,
+  media_type text NOT NULL CHECK (media_type = ANY (ARRAY['video'::text, 'image'::text, 'link'::text])),
+  url text NOT NULL,
+  title text,
+  description text,
+  thumbnail_url text,
+  position integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  placeholder_id text,
+  CONSTRAINT trade_idea_media_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_trade_idea_media_trade_idea FOREIGN KEY (trade_idea_id) REFERENCES public.trade_ideas(id)
+);
+CREATE TABLE public.trade_ideas (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  instrument text NOT NULL,
+  breakdown text,
+  image_url text,
+  tags ARRAY,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  profile_id uuid,
+  show_support boolean DEFAULT false,
+  crypto_link text,
+  CONSTRAINT trade_ideas_pkey PRIMARY KEY (id),
+  CONSTRAINT trade_ideas_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT trade_ideas_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.trade_tracking (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  trade_idea_id bigint,
+  asset text NOT NULL,
+  direction text NOT NULL CHECK (direction = ANY (ARRAY['Long'::text, 'Short'::text])),
+  entry_price numeric,
+  exit_price numeric,
+  target_price numeric,
+  stop_loss numeric,
+  risk_reward numeric,
+  status text DEFAULT 'open'::text CHECK (status = ANY (ARRAY['open'::text, 'closed'::text, 'cancelled'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  closed_at timestamp with time zone,
+  user_id uuid NOT NULL,
+  CONSTRAINT trade_tracking_pkey PRIMARY KEY (id),
+  CONSTRAINT trade_tracking_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT trade_tracking_trade_idea_id_fkey FOREIGN KEY (trade_idea_id) REFERENCES public.trade_ideas(id)
+);
+CREATE TABLE public.unread_message_counts (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid UNIQUE,
+  unread_count integer DEFAULT 0,
+  last_checked_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT unread_message_counts_pkey PRIMARY KEY (id),
+  CONSTRAINT unread_message_counts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_follows (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  follower_id uuid,
+  following_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_follows_pkey PRIMARY KEY (id),
+  CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES auth.users(id),
+  CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.verifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id text NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['donation'::text, 'broker'::text])),
+  image_path text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  broker_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  verified_by text,
+  verified_at timestamp with time zone,
+  CONSTRAINT verifications_pkey PRIMARY KEY (id)
+);

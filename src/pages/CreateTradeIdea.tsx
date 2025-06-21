@@ -23,7 +23,8 @@ const CreateTradeIdea = () => {
   
   const [title, setTitle] = useState('');
   const [instrument, setInstrument] = useState('');
-  const [breakdown, setBreakdown] = useState('');
+  const [breakdownPages, setBreakdownPages] = useState<string[]>(['']); // Array for pages
+  const [currentPageContentIndex, setCurrentPageContentIndex] = useState(0); // Current page index
   const [tags, setTags] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [showMediaSelector, setShowMediaSelector] = useState(false);
@@ -44,8 +45,12 @@ const CreateTradeIdea = () => {
     const mediaItem = { ...item, id: uniqueId };
     const mediaPlaceholder = `\n[MEDIA:${uniqueId}]\n`;
     
-    const newBreakdown = breakdown.slice(0, cursorPosition) + mediaPlaceholder + breakdown.slice(cursorPosition);
-    setBreakdown(newBreakdown);
+    setBreakdownPages(prevPages => {
+      const newPages = [...prevPages];
+      const currentPageContent = newPages[currentPageContentIndex];
+      newPages[currentPageContentIndex] = currentPageContent.slice(0, cursorPosition) + mediaPlaceholder + currentPageContent.slice(cursorPosition);
+      return newPages;
+    });
     setMediaItems(prev => [...prev, mediaItem]);
     setShowMediaSelector(false);
 
@@ -57,14 +62,18 @@ const CreateTradeIdea = () => {
   const removeMediaItem = (id: string) => {
     setMediaItems(prev => prev.filter(item => item.id !== id));
     const placeholderRegex = new RegExp(`\\[MEDIA:${id}\\]`, 'g');
-    setBreakdown(prev => prev.replace(placeholderRegex, ''));
+    setBreakdownPages(prevPages => {
+      const newPages = [...prevPages];
+      newPages[currentPageContentIndex] = newPages[currentPageContentIndex].replace(placeholderRegex, '');
+      return newPages;
+    });
   };
 
   const createMutation = useMutation({
     mutationFn: async (data: {
       title: string;
       instrument: string;
-      breakdown: string;
+      breakdownPages: string[]; // Changed to array
       tags: string[];
       mediaItems: MediaItem[];
     }) => {
@@ -85,7 +94,7 @@ const CreateTradeIdea = () => {
         .insert([{
           title: data.title,
           instrument: data.instrument,
-          breakdown: data.breakdown,
+          breakdown: data.breakdownPages, // Pass the array
           tags: data.tags,
           user_id: user.id,
           image_url: thumbnailUrl || null,
@@ -183,10 +192,10 @@ const CreateTradeIdea = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !instrument.trim() || !breakdown.trim()) {
+    if (!title.trim() || !instrument.trim() || breakdownPages.some(page => !page.trim())) {
       toast({
         title: 'Missing fields',
-        description: 'Please fill in all required fields.',
+        description: 'Please fill in all required fields for all pages.',
         variant: 'destructive',
       });
       return;
@@ -201,7 +210,7 @@ const CreateTradeIdea = () => {
     console.log('Submitting:', {
       title: capitalizedTitle,
       instrument,
-      breakdown,
+      breakdownPages, // Pass the array
       tags: tagsArray,
       mediaItems,
     });
@@ -209,11 +218,22 @@ const CreateTradeIdea = () => {
     createMutation.mutate({
       title: capitalizedTitle,
       instrument,
-      breakdown,
+      breakdownPages, // Pass the array
       tags: tagsArray,
       mediaItems,
     });
   };
+
+  const handleAddPage = () => {
+    setBreakdownPages(prevPages => [...prevPages, '']);
+    setCurrentPageContentIndex(breakdownPages.length);
+  };
+
+  const handlePageChange = (index: number) => {
+    setCurrentPageContentIndex(index);
+  };
+
+  const currentPageContent = breakdownPages[currentPageContentIndex];
 
   return (
     <>
@@ -221,7 +241,16 @@ const CreateTradeIdea = () => {
       <main className="min-h-screen bg-brand-dark">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-white mb-8">Create Trade Idea</h1>
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-3xl font-bold text-white">Create Trade Idea</h1>
+              <Button
+                variant="outline"
+                onClick={() => navigate(-1)}
+                className="text-white border-gray-600 hover:bg-gray-700"
+              >
+                Back
+              </Button>
+            </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -260,20 +289,57 @@ const CreateTradeIdea = () => {
                 </div>
                 <Textarea
                   ref={textareaRef}
-                  value={breakdown}
-                  onChange={(e) => setBreakdown(e.target.value)}
-                  placeholder="Write your analysis here..."
+                  value={currentPageContent}
+                  onChange={(e) => {
+                    setBreakdownPages(prevPages => {
+                      const newPages = [...prevPages];
+                      newPages[currentPageContentIndex] = e.target.value;
+                      return newPages;
+                    });
+                  }}
+                  placeholder={`Write your analysis for page ${currentPageContentIndex + 1} here...`}
                   className="min-h-[300px] w-full"
                   required
                 />
                 
+                {/* Pagination controls for breakdown content */}
+                <div className="flex items-center justify-between mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handlePageChange(currentPageContentIndex - 1)}
+                    disabled={currentPageContentIndex === 0}
+                  >
+                    Previous Page
+                  </Button>
+                  <span className="text-white">
+                    Page {currentPageContentIndex + 1} of {breakdownPages.length}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handlePageChange(currentPageContentIndex + 1)}
+                    disabled={currentPageContentIndex === breakdownPages.length - 1}
+                  >
+                    Next Page
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAddPage}
+                  className="mt-2 w-full"
+                >
+                  Add New Page
+                </Button>
+
                 {/* Live Preview */}
-                {breakdown && (
+                {currentPageContent && (
                   <div className="mt-4 p-4 rounded-lg bg-brand-gray-200/10">
-                    <h3 className="text-sm font-medium text-gray-300 mb-2">Preview:</h3>
+                    <h3 className="text-sm font-medium text-gray-300 mb-2">Preview (Current Page):</h3>
                     <div className="prose prose-invert max-w-none">
                       <InlineMediaRenderer
-                        content={breakdown}
+                        content={currentPageContent}
                         mediaItems={mediaItems}
                       />
                     </div>

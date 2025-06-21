@@ -6,7 +6,7 @@ export type TradeIdea = {
   created_at: string;
   title: string;
   instrument: string;
-  breakdown: string;
+  breakdown: string[]; // Changed to array of strings for pagination
   image_url: string | null;
   tags: string[] | null;
   user_id: string | null;
@@ -36,6 +36,7 @@ export type Profile = {
   updated_at: string;
   is_banned?: boolean;
   is_admin?: boolean;
+  email?: string | null;
 };
 
 export type Ad = {

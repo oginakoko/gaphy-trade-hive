@@ -1,18 +1,19 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { corsHeaders } from '../_shared/cors.ts'
+import { createClient, SupabaseClient } from "https://esm.sh/v135/@supabase/supabase-js@2.43.0";
+import { corsHeaders } from '../_shared/cors.ts';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 async function getUser(req: Request, supabaseClient: SupabaseClient) {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) throw new Error('Missing authorization header')
-  const { data: { user }, error } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
-  if (error || !user) throw new Error('Invalid JWT or user not found')
-  return user
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) throw new Error('Missing authorization header');
+  const { data: { user }, error } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
+  if (error || !user) throw new Error('Invalid JWT or user not found');
+  return user;
 }
 
-// @ts-ignore
-Deno.serve(async (req) => {
+serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -24,15 +25,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
       return new Response(JSON.stringify({ error: 'Missing Supabase environment variables.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
-    const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
+    const supabaseClient = createClient(supabaseUrl, anonKey);
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const requestingUser = await getUser(req, supabaseClient);
 

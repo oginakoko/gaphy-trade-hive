@@ -47,16 +47,36 @@ const ProfileForm = () => {
         mutationFn: async (values: ProfileFormValues) => {
             if (!user) throw new Error("User not found");
 
-            const { error } = await supabase
+            // Try update first, fallback to insert if not found
+            const { error: updateError, data: updateData } = await supabase
                 .from('profiles')
-                .upsert({ 
-                    id: user.id, 
+                .update({
                     username: values.username,
                     avatar_url: values.avatar_url,
                     updated_at: new Date().toISOString(),
-                });
+                })
+                .eq('id', user.id)
+                .select();
 
-            if (error) throw error;
+            if (updateError) {
+                // If update fails due to RLS or not found, try insert
+                const { error: insertError, data: insertData } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: user.id,
+                        username: values.username,
+                        avatar_url: values.avatar_url,
+                        updated_at: new Date().toISOString(),
+                        email: user.email ?? '',
+                        created_at: new Date().toISOString(),
+                    })
+                    .select();
+                if (insertError) throw insertError;
+                if (!insertData || insertData.length === 0) throw new Error('Profile insert failed. RLS or schema issue.');
+                return insertData[0];
+            }
+            if (!updateData || updateData.length === 0) throw new Error('No profile row was updated. RLS may be blocking this action.');
+            return updateData[0];
         },
         onSuccess: () => {
             toast({ title: "Success", description: "Profile updated successfully." });
@@ -70,7 +90,18 @@ const ProfileForm = () => {
     });
 
     const onSubmit = (values: ProfileFormValues) => {
-        updateProfileMutation.mutate(values);
+        console.error('--- Profile form onSubmit handler fired ---', values);
+        console.log('Submitting profile form:', values);
+        updateProfileMutation.mutate(values, {
+            onSuccess: (data) => {
+                if (!data) {
+                    toast({ title: "No changes made", description: "No profile data was changed.", variant: "default" });
+                }
+            },
+            onError: (error: any) => {
+                toast({ title: "Error updating profile", description: error.message, variant: "destructive" });
+            }
+        });
     };
 
     if (isLoadingProfile) {
@@ -99,8 +130,19 @@ const ProfileForm = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center sm:items-end">
-              <Button type="submit" className="w-full sm:w-auto bg-brand-green hover:bg-brand-green/90 text-black font-semibold">
-                {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+              <Button type="button" className="w-full sm:w-auto bg-brand-green hover:bg-brand-green/90 text-black font-semibold" disabled={form.formState.isSubmitting || updateProfileMutation.isPending} onClick={() => {
+                console.warn('--- Profile form button clicked ---');
+                console.log('Attempting form.handleSubmit...');
+                form.handleSubmit(onSubmit, (errors) => {
+                  console.error('--- form.handleSubmit validation errors ---', errors);
+                  toast({
+                    title: 'Validation Error',
+                    description: 'Please fix the errors in the form.',
+                    variant: 'destructive',
+                  });
+                })(); // Immediately invoke the handler returned by handleSubmit
+              }}>
+                {form.formState.isSubmitting || updateProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
               </Button>
             </div>
           </div>

@@ -26,10 +26,12 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
   const firstImage = idea.media?.find(m => m.type === 'image')?.url || idea.image_url;
 
   // Clean the breakdown text by removing media placeholders and normalizing markdown
-  const cleanBreakdown = idea.breakdown
-    .replace(/\[MEDIA:[^\]]+\]/g, '') // Remove media placeholders
-    .trim()
-    .split('\n')[0]; // Take first paragraph
+  const cleanBreakdown = (idea.breakdown && idea.breakdown.length > 0 && typeof idea.breakdown[0] === 'string')
+    ? idea.breakdown[0]
+        .replace(/\[MEDIA:[^\]]+\]/g, '') // Remove media placeholders
+        .trim()
+        .split('\n')[0] // Take first paragraph
+    : ''; // Default to empty string if breakdown is empty or null
 
   const snippet = cleanBreakdown.length > 120 
     ? cleanBreakdown.substring(0, 120) + '...' 
@@ -115,7 +117,7 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
           <span className="text-xs text-gray-400">Trade ID:</span>
           <span className="text-xs font-mono text-brand-green select-all">{idea.id}</span>
           <Button
-            size="xs"
+            size="sm"
             variant="ghost"
             className="p-1 h-6 w-6 text-xs text-gray-400 hover:text-brand-green"
             onClick={() => {

@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useServerMessages } from '@/hooks/useServerMessages';
 import { Server, ServerMessage } from '@/types/server';
 import { useAuth } from '@/hooks/useAuth';
+import { chatWithAI, decodeAIStreamToString } from '@/lib/openrouter';
 import { supabase } from '@/lib/supabaseClient';
+import { useProfile } from '@/hooks/useProfile';
 import { toast } from '../ui/use-toast';
 import { X } from 'lucide-react';
 
@@ -25,6 +27,7 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   const { messages, sendMessage, isSending, deleteMessage } = useServerMessages(initialServer.id);
   const { userServers, leaveServer } = useServers();
   const { members } = useServerMembers(initialServer.id);
+  const { data: profile } = useProfile();
   
   const [server, setServer] = useState(initialServer);
   const [replyingTo, setReplyingTo] = useState<ServerMessage | null>(null);
@@ -48,15 +51,72 @@ const ServerChat = ({ server: initialServer, onBack }: ServerChatProps) => {
   }, [members]);
 
   const handleSendMessage = async (message: string, mediaFile: File | null) => {
-    if (!message && !mediaFile) return;
-
-    // 1. Extract mentioned usernames from the message (e.g., @username)
-    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-    const mentionedUsernames = Array.from(message.matchAll(mentionRegex)).map(match => match[1]);
-    // 2. Map usernames to UUIDs using members list
-    const mentionedUserIds = mentionedUsernames
-      .map(username => mentionableMembers.find(m => m.username === username)?.id)
-      .filter(Boolean);
+    // Detect @gaphy mention
+    if (message.trim().toLowerCase().startsWith('@gaphy')) {
+      // Remove @gaphy mention and trim
+      const question = message.replace(/^@gaphy/i, '').trim();
+      // Fetch admin profile (first admin user)
+      const { data: admins } = await supabase.from('profiles').select('*').eq('is_admin', true).limit(1);
+      const adminProfile = admins && admins.length > 0 ? admins[0] : null;
+      // Build admin context (fetch all app data)
+      let tradeIdeas = [];
+      let servers = [];
+      let users = [];
+      let ads = [];
+      let affiliateLinks = [];
+      let contextObj: any = {};
+      try {
+        const [tradeIdeasRes, serversRes, usersRes, adsRes, affRes] = await Promise.all([
+          supabase.from('trade_ideas').select('id, title, instrument, breakdown, image_url, tags, user_id, likes').order('created_at', { ascending: false }).limit(50),
+          supabase.from('servers').select('id, name, description, image_url, owner_id, created_at, is_public, member_count').order('created_at', { ascending: false }).limit(50),
+          supabase.from('profiles').select('id, username, avatar_url, is_admin, is_banned').limit(100),
+          supabase.from('ads').select('id, title, content, link_url, media_url, media_type, status, start_date, end_date, cost').limit(50),
+          supabase.from('affiliate_links').select('id, title, url').limit(50)
+        ]);
+        tradeIdeas = tradeIdeasRes.data || [];
+        servers = serversRes.data || [];
+        users = usersRes.data || [];
+        ads = adsRes.data || [];
+        affiliateLinks = affRes.data || [];
+        contextObj = {
+          tradeIdeas,
+          servers,
+          users,
+          ads,
+          affiliateLinks
+        };
+      } catch (err) {
+        contextObj = { tradeIdeas: [] };
+      }
+      // Strict system prompt for server chat
+      const systemPrompt = `You are AlphaFinder, the AI assistant for Gaphy Trade Hive.\n\nGREETINGS: If the user says hello or makes small talk, respond with exactly: "Hi there! How can I help with trading today?"\n\nDATA QUERIES: For questions about ads/trades/links, use this data (in JSON):\n${JSON.stringify(contextObj, null, 2)}\n\nRULES:\n1. Never mention data unless explicitly asked\n2. Answer in ONE natural sentence without lists\n3. Example responses:\n   - "There are 2 approved ads for 'mvuvi delights'"\n   - "The trading course is at gaphytradingcourse.vercel.app"\n4. If no data matches, say "No data found"`;
+      // Send to AI
+      const chatMessages: { role: "system" | "user"; content: string }[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question }
+      ];
+      let botResponse = '';
+      try {
+        const stream = await chatWithAI(chatMessages as any); // chatWithAI expects Message[]
+        botResponse = await decodeAIStreamToString(stream);
+      } catch (err) {
+        botResponse = 'Sorry, I could not process your request.';
+      }
+      // Post bot response as a server message (as admin/bot)
+      if (adminProfile) {
+        // Use the direct sendMessage function, not the hook, to allow specifying user_id
+        const { sendMessage } = await import('@/hooks/useServerMessages');
+        await sendMessage({
+          server_id: server.id,
+          user_id: adminProfile.id, // Always post as admin
+          content: botResponse,
+          media_url: undefined,
+          media_type: undefined
+        });
+        setReplyingTo(null);
+      }
+      return;
+    }
 
     let mediaUrl: string | undefined;
     let mediaType: 'image' | 'video' | 'audio' | 'document' | undefined;

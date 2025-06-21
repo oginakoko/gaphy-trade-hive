@@ -86,13 +86,23 @@ async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
 // Initialize models list
 fetchAvailableModels().catch(console.error);
 
+let FALLBACK_OPENROUTER_API_KEY: string | null = import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || null;
+export function setFallbackOpenRouterKey(key: string) {
+  FALLBACK_OPENROUTER_API_KEY = key;
+}
+
 async function makeAPIRequest(
   messages: Message[],
   signal?: AbortSignal,
-  { stream = false, temperature = 0.7, max_tokens = 4000 }: APIOptions = {}
+  { stream = false, temperature = 0.7, max_tokens = 4000 }: APIOptions = {},
+  apiKeyOverride?: string
 ): Promise<Response> {
-  if (!OPENROUTER_API_KEY) {
-    throw new Error('OpenRouter API key is not configured');
+  const apiKey = apiKeyOverride || OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'OpenRouter API key is not configured. ' +
+      'Please set VITE_OPENROUTER_API_KEY in your .env file'
+    );
   }
 
   // Validate message format
@@ -120,7 +130,7 @@ async function makeAPIRequest(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'https://gaphyhive.com',
         'X-Title': 'GaphyHive'
       },
@@ -136,6 +146,10 @@ async function makeAPIRequest(
       } catch {
         // If we can't parse the error JSON, use the default message
       }
+      // If 429 or provider error and fallback key exists, retry with fallback
+      if ((response.status === 429 || errorMessage.toLowerCase().includes('provider')) && FALLBACK_OPENROUTER_API_KEY && !apiKeyOverride) {
+        return await makeAPIRequest(messages, signal, { stream, temperature, max_tokens }, FALLBACK_OPENROUTER_API_KEY);
+      }
       throw new Error(errorMessage);
     }
 
@@ -145,9 +159,17 @@ async function makeAPIRequest(
     if (error.name === 'AbortError') {
       throw error;
     }
-
-    // Add more context to the error message
+    // If provider error and fallback key exists, retry with fallback
+    if (FALLBACK_OPENROUTER_API_KEY && !apiKeyOverride && error.message?.toLowerCase().includes('provider')) {
+      return await makeAPIRequest(messages, signal, { stream, temperature, max_tokens }, FALLBACK_OPENROUTER_API_KEY);
+    }
     const message = error.message || 'Unknown error occurred';
+    
+    // Provide more helpful error for missing API key
+    if (message.includes('not configured')) {
+      throw new Error(message);
+    }
+    
     throw new Error(`Failed to connect to AI service: ${message}. Please try again later.`);
   }
 }
@@ -281,6 +303,53 @@ Return format (JSON):
     // Return null instead of throwing so the chat can continue
     return null;
   }
+}
 
-  return null;
+/**
+ * Utility to decode a ReadableStream<Uint8Array> to string.
+ * Handles OpenRouter's streaming JSON lines and extracts assistant content.
+ */
+export async function decodeAIStreamToString(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const streamReader = stream.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let result = '';
+  let buffer = '';
+  while (true) {
+    const { done, value } = await streamReader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('data:')) {
+        const jsonStr = trimmed.replace(/^data:/, '').trim();
+        if (jsonStr === '[DONE]' || !jsonStr) continue;
+        try {
+          const data = JSON.parse(jsonStr);
+          const content = data.choices?.[0]?.delta?.content;
+          if (typeof content === 'string') {
+            result += content;
+          }
+        } catch (e) {
+          // Ignore JSON parse errors for non-data lines
+        }
+      }
+    }
+  }
+  // Flush any remaining bytes (incomplete line)
+  // Flush any remaining bytes (incomplete line)
+  if (buffer.trim().startsWith('data:')) {
+    const jsonStr = buffer.trim().replace(/^data:/, '').trim();
+    if (jsonStr && jsonStr !== '[DONE]') {
+      try {
+        const data = JSON.parse(jsonStr);
+        const content = data.choices?.[0]?.delta?.content;
+        if (typeof content === 'string') {
+          result += content;
+        }
+      } catch (e) {}
+    }
+  }
+  return result;
 }

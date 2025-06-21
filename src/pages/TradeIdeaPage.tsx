@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -17,9 +17,18 @@ import InlineMediaRenderer from '@/components/trade-ideas/InlineMediaRenderer';
 import { useTradeTracking } from '@/hooks/useTradeTracking';
 import { TradeTrackingTable } from '@/components/trade-ideas/TradeTrackingTable';
 import MetaTags from '@/components/meta-tags';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface ExtendedTradeIdea extends TradeIdea {
   media: MediaItem[];
+  breakdown: string[]; // Ensure breakdown is typed as string[]
 }
 
 const fetchTradeIdea = async (id: string): Promise<ExtendedTradeIdea> => {
@@ -65,6 +74,8 @@ const fetchTradeIdea = async (id: string): Promise<ExtendedTradeIdea> => {
 const TradeIdeaPage = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const [currentPageBreakdownIndex, setCurrentPageBreakdownIndex] = useState(0);
+
   const {
     trades,
     isLoading: isLoadingTrades,
@@ -95,10 +106,15 @@ const TradeIdeaPage = () => {
 
   // Analyze trade on load
   useEffect(() => {
-    if (idea?.breakdown && !trades?.length) {
-      analyzeTrade(idea.breakdown);
+    if (idea?.breakdown && idea.breakdown.length > 0 && !trades?.length) {
+      analyzeTrade(idea.breakdown[0]); // Analyze only the first page for now
     }
   }, [idea?.breakdown, trades?.length]);
+
+  useEffect(() => {
+    // Reset to first page when idea changes
+    setCurrentPageBreakdownIndex(0);
+  }, [id]);
 
   const authorName = idea?.profiles?.username || 'Anonymous';
   const authorAvatar = idea?.profiles?.avatar_url || '/placeholder.svg';
@@ -140,7 +156,7 @@ const TradeIdeaPage = () => {
       {idea && (
         <MetaTags
           title={idea.title}
-          description={idea.breakdown.replace(/\[MEDIA:[^\]]+\]/g, '').replace(/[#*_`>\-]/g, '').slice(0, 160) || 'Trade idea on GaphyHive'}
+          description={idea.breakdown[0]?.replace(/\[MEDIA:[^\]]+\]/g, '').replace(/[#*_`>\-]/g, '').slice(0, 160) || 'Trade idea on GaphyHive'}
           image={idea.media?.find(m => m.type === 'image')?.url || idea.image_url || 'https://gaphyhive.lovable.app/logo.svg'}
           url={`${window.location.origin}/trade-ideas/${idea.id}`}
         />
@@ -189,8 +205,41 @@ const TradeIdeaPage = () => {
                 </Button>
               </div>
               <div className="prose prose-invert max-w-none text-sm sm:text-base">
-                <InlineMediaRenderer content={idea.breakdown} mediaItems={idea.media || []} />
+                <InlineMediaRenderer content={idea.breakdown[currentPageBreakdownIndex] || ''} mediaItems={idea.media || []} />
               </div>
+
+              {idea.breakdown.length > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); setCurrentPageBreakdownIndex(prev => Math.max(0, prev - 1)); }}
+                        className={currentPageBreakdownIndex === 0 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    {[...Array(idea.breakdown.length)].map((_, index) => (
+                      <PaginationItem key={index}>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setCurrentPageBreakdownIndex(index); }}
+                          isActive={currentPageBreakdownIndex === index}
+                        >
+                          {index + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); setCurrentPageBreakdownIndex(prev => Math.min(idea.breakdown.length - 1, prev + 1)); }}
+                        className={currentPageBreakdownIndex === idea.breakdown.length - 1 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+
               {/* Show a message if no AI trade analysis is available */}
               {(!trades || trades.length === 0) && (
                 <div className="my-4 sm:my-6 p-3 sm:p-4 rounded-lg bg-yellow-900/20 border border-yellow-700 text-yellow-200 text-xs sm:text-sm">

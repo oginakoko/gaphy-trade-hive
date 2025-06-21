@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import DonationModal from '@/components/DonationModal';
@@ -13,11 +13,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
 import { TradeIdea } from '@/types';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 
 const Analysis = () => {
   const [isDonationModalOpen, setDonationModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { feed, isLoading, error, userLikes } = useAnalysisFeed();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // You can make this customizable if needed
+
+  const { feed, isLoading, error, userLikes, totalPages } = useAnalysisFeed(currentPage, itemsPerPage);
   const { user } = useAuth();
   const isAdmin = user?.id === '73938002-b3f8-4444-ad32-6a46cbf8e075';
 
@@ -55,7 +67,7 @@ const Analysis = () => {
         )}
         <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2">
-                <Feed 
+                <Feed
                     feed={feed}
                     isLoading={isLoading}
                     error={error as Error | null}
@@ -63,6 +75,37 @@ const Analysis = () => {
                     isAdmin={isAdmin}
                     onEditIdea={handleEdit}
                 />
+                {totalPages > 1 && (
+                    <Pagination className="mt-8">
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    href="#"
+                                    onClick={(e) => { e.preventDefault(); setCurrentPage(prev => Math.max(1, prev - 1)); }}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                            {[...Array(totalPages)].map((_, index) => (
+                                <PaginationItem key={index}>
+                                    <PaginationLink
+                                        href="#"
+                                        onClick={(e) => { e.preventDefault(); setCurrentPage(index + 1); }}
+                                        isActive={currentPage === index + 1}
+                                    >
+                                        {index + 1}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                                <PaginationNext
+                                    href="#"
+                                    onClick={(e) => { e.preventDefault(); setCurrentPage(prev => Math.min(totalPages, prev + 1)); }}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                )}
             </div>
             <div className="hidden lg:block space-y-8">
               <ServerRecommendations />
