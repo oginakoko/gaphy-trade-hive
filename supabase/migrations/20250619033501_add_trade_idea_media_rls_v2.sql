@@ -1,4 +1,3 @@
-
 -- Drop existing problematic objects and recreate them properly
 DROP TRIGGER IF EXISTS update_messages_updated_at ON private_messages;
 DROP TRIGGER IF EXISTS auto_follow_admin ON profiles;

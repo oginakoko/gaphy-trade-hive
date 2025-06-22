@@ -5,7 +5,7 @@ interface Message {
   content: string;
 }
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY as string;
+const OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_API_KEY || '') as string;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const API_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
@@ -57,7 +57,8 @@ let availableModels: OpenRouterModel[] = [];
 
 async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
   if (!OPENROUTER_API_KEY) {
-    throw new Error('OpenRouter API key is not configured');
+    console.warn('OpenRouter API key is not configured. Cannot fetch available models.');
+    return [];
   }
 
   try {
@@ -70,7 +71,8 @@ async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.error(`HTTP error fetching models! status: ${response.status}`);
+      return [];
     }
 
     const data = await response.json();
@@ -78,7 +80,6 @@ async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
     return availableModels;
   } catch (error) {
     console.error('Failed to fetch available models:', error);
-    // Return empty array but don't throw - we'll use the default model
     return [];
   }
 }
@@ -86,105 +87,118 @@ async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
 // Initialize models list
 fetchAvailableModels().catch(console.error);
 
-let FALLBACK_OPENROUTER_API_KEY: string | null = import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || null;
+const FALLBACK_OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || '') as string;
+const GEMINI_API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || '') as string;
+const FALLBACK_MODEL = 'google/gemini-pro'; // Gemini 2.0 is now Gemini Pro
+
 export function setFallbackOpenRouterKey(key: string) {
-  FALLBACK_OPENROUTER_API_KEY = key;
+  // This function might not be needed if keys are always from env
+  // but keeping it for now if there's external logic that uses it.
+  // For now, it won't directly affect the const above.
+  console.warn('setFallbackOpenRouterKey called, but API keys are now loaded directly from environment variables.');
 }
 
 async function makeAPIRequest(
   messages: Message[],
   signal?: AbortSignal,
-  { stream = false, temperature = 0.7, max_tokens = 4000 }: APIOptions = {},
+  options: APIOptions = {},
   apiKeyOverride?: string
 ): Promise<Response> {
-  const apiKey = apiKeyOverride || OPENROUTER_API_KEY;
-  if (!apiKey) {
+  const apiKeys = [
+    { key: apiKeyOverride, model: DEFAULT_MODEL, source: 'override' },
+    { key: OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'primary' },
+    { key: FALLBACK_OPENROUTER_API_KEY, model: FALLBACK_MODEL, source: 'fallback' },
+    { key: GEMINI_API_KEY, model: FALLBACK_MODEL, source: 'gemini' }
+  ].filter(k => k.key && !k.key.includes('YOUR_'));
+
+  console.log("Available API Keys for makeAPIRequest:", apiKeys.map(k => ({ source: k.source, model: k.model, keyPresent: !!k.key })));
+
+  if (apiKeys.length === 0) {
     throw new Error(
-      'OpenRouter API key is not configured. ' +
-      'Please set VITE_OPENROUTER_API_KEY in your .env file'
+      'AI service API key is not configured. Please set your API keys in the .env file.'
     );
   }
 
-  // Validate message format
-  if (!messages.length || !messages.every(m => m.role && m.content && typeof m.content === 'string')) {
-    throw new Error('Invalid message format. Each message must have a role and content.');
+  if (!messages.length || !messages.every(m => m.role && m.content)) {
+    throw new Error('Invalid message format.');
   }
 
-  // Find a suitable model
-  const model = availableModels.find(m => m.id === DEFAULT_MODEL) ? DEFAULT_MODEL : 'mistralai/mixtral-8x7b-instruct';
+  let lastError: any = null;
 
-  const requestBody: APIRequestBody = {
-    model,
-    messages,
-    temperature,
-    stream,
-    max_tokens,
-    frequency_penalty: 0,
-    presence_penalty: 0,
-    top_p: 1,
-    top_k: 40
-  };
+  for (const { key, model, source } of apiKeys) {
+    let currentModel = model;
 
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://gaphyhive.com',
-        'X-Title': 'GaphyHive'
-      },
-      body: JSON.stringify(requestBody),
-      signal
-    });
+    if (source === 'primary') {
+      const freeModels = availableModels.filter(m => parseFloat(m.pricing.prompt) === 0 && parseFloat(m.pricing.completion) === 0);
+      if (!availableModels.find(m => m.id === DEFAULT_MODEL)) {
+        const preferredFreeModels = ['mistralai/mixtral-8x7b-instruct', 'deepseek-ai/deepseek-coder-6.7b-instruct'];
+        const foundFreeModel = preferredFreeModels.find(id => freeModels.some(m => m.id === id));
+        if (foundFreeModel) {
+          currentModel = foundFreeModel;
+        } else if (freeModels.length > 0) {
+          currentModel = freeModels[0].id;
+        } else {
+          currentModel = 'mistralai/mixtral-8x7b-instruct';
+        }
+      }
+    }
 
-    if (!response.ok) {
+    const requestBody: APIRequestBody = {
+      model: currentModel,
+      messages,
+      ...options
+    };
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://gaphyhive.com',
+          'X-Title': 'GaphyHive'
+        },
+        body: JSON.stringify(requestBody),
+        signal
+      });
+
+      if (response.ok) {
+        return response;
+      }
+
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
         errorMessage = errorData.error?.message || errorMessage;
-      } catch {
-        // If we can't parse the error JSON, use the default message
-      }
-      // If 429 or provider error and fallback key exists, retry with fallback
-      if ((response.status === 429 || errorMessage.toLowerCase().includes('provider')) && FALLBACK_OPENROUTER_API_KEY && !apiKeyOverride) {
-        return await makeAPIRequest(messages, signal, { stream, temperature, max_tokens }, FALLBACK_OPENROUTER_API_KEY);
-      }
-      throw new Error(errorMessage);
-    }
+      } catch {}
 
-    return response;
-  } catch (error: any) {
-    // Rethrow abort errors as is
-    if (error.name === 'AbortError') {
-      throw error;
+      lastError = new Error(errorMessage);
+
+      if (response.status !== 429 && response.status !== 402 && !errorMessage.toLowerCase().includes('provider')) {
+        throw lastError;
+      }
+      // If it's a retryable error, the loop will continue to the next key.
+
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw error;
+      }
+      lastError = error;
     }
-    // If provider error and fallback key exists, retry with fallback
-    if (FALLBACK_OPENROUTER_API_KEY && !apiKeyOverride && error.message?.toLowerCase().includes('provider')) {
-      return await makeAPIRequest(messages, signal, { stream, temperature, max_tokens }, FALLBACK_OPENROUTER_API_KEY);
-    }
-    const message = error.message || 'Unknown error occurred';
-    
-    // Provide more helpful error for missing API key
-    if (message.includes('not configured')) {
-      throw new Error(message);
-    }
-    
-    throw new Error(`Failed to connect to AI service: ${message}. Please try again later.`);
   }
+
+  throw new Error(`Failed to connect to AI service after trying all fallbacks: ${lastError?.message || 'Unknown error'}`);
 }
 
 export async function chatWithAI(
   messages: Message[],
   signal?: AbortSignal
 ): Promise<ReadableStream<Uint8Array>> {
-  // Filter out any empty or invalid messages
   const validMessages = messages.filter(m => m.content?.trim());
-
-  const response = await makeAPIRequest(validMessages, signal, { 
-    stream: true, 
-    temperature: 0.7, 
-    max_tokens: 4000 
+  const response = await makeAPIRequest(validMessages, signal, {
+    stream: true,
+    temperature: 0.7,
+    max_tokens: 4000
   });
 
   if (!response.body) {
@@ -228,81 +242,75 @@ Return format (JSON):
     }
   ];
 
-  try {
-    const response = await makeAPIRequest(messages, undefined, { 
-      stream: false, 
-      temperature: 0.3, 
-      max_tokens: 500 
-    });
+  const response = await makeAPIRequest(messages, undefined, {
+    stream: false,
+    temperature: 0.3,
+    max_tokens: 500
+  });
 
-    const data = await response.json();
-    if (!data.choices?.[0]?.message?.content) {
-      console.error('Unexpected API response format:', data);
-      return null;
-    }
-
-    const result = data.choices[0].message.content;
-    console.log('Raw AI response:', result); // Log raw response for debugging
-
-    try {
-      // Attempt to extract JSON from the response
-      const jsonMatch = result.match(/```json\\n([\\s\\S]*?)\\n```/);
-      let jsonString = result;
-
-      if (jsonMatch && jsonMatch[1]) {
-        jsonString = jsonMatch[1];
-      } else {
-        // Fallback to finding the first { and last }
-        const firstCurly = result.indexOf('{');
-        const lastCurly = result.lastIndexOf('}');
-        if (firstCurly !== -1 && lastCurly !== -1 && lastCurly > firstCurly) {
-          jsonString = result.substring(firstCurly, lastCurly + 1);
-        }
-      }
-
-      // Sanitize: replace numbers ending with a period (e.g., 38.) with 38.0
-      jsonString = jsonString.replace(/(\d+)\.(?=\s*[\,\}])/g, '$1.0');
-
-      const parsedData = JSON.parse(jsonString);
-
-      if (parsedData && parsedData.asset && parsedData.direction) {
-        // Only proceed if we have either entry price or target price
-        if (parsedData.entry_price === null && parsedData.target_price === null) {
-          console.log('No explicit entry or target price found.');
-          return null;
-        }
-
-        // Calculate risk/reward if we have both target and stop
-        if (parsedData.target_price !== null && parsedData.stop_loss !== null && parsedData.entry_price !== null) {
-          const direction = parsedData.direction.toLowerCase();
-          const risk = Math.abs(parsedData.entry_price - parsedData.stop_loss);
-          const reward = Math.abs(parsedData.target_price - parsedData.entry_price);
-
-          if (risk === 0) {
-             parsedData.risk_reward = null; // Avoid division by zero
-          } else {
-            parsedData.risk_reward = direction === 'long' ? 
-              reward / risk : 
-              risk / reward;
-          }
-        }
-
-        return {
-          ...parsedData,
-          status: 'open'
-        };
-      }
-    } catch (e) {
-      console.error('Failed to parse trade data:', e);
-      console.log('Problematic AI response:', result); // Log the raw response that failed parsing
-    }
-    // Return null instead of throwing so the chat can continue
-    return null;
-  } catch (error) {
-    console.error('Error analyzing trade idea:', error);
-    // Return null instead of throwing so the chat can continue
+  const data = await response.json();
+  if (!data.choices?.[0]?.message?.content) {
+    console.error('Unexpected API response format:', data);
     return null;
   }
+
+  const result = data.choices[0].message.content;
+  console.log('Raw AI response:', result); // Log raw response for debugging
+
+  try {
+    // Attempt to extract JSON from the response
+    const jsonMatch = result.match(/```json\\n([\\s\\S]*?)\\n```/);
+    let jsonString = result;
+
+    if (jsonMatch && jsonMatch[1]) {
+      jsonString = jsonMatch[1];
+    } else {
+      // Fallback to finding the first { and last }
+      const firstCurly = result.indexOf('{');
+      const lastCurly = result.lastIndexOf('}');
+      if (firstCurly !== -1 && lastCurly !== -1 && lastCurly > firstCurly) {
+        jsonString = result.substring(firstCurly, lastCurly + 1);
+      }
+    }
+
+    // Sanitize: replace numbers ending with a period (e.g., 38.) with 38.0
+    jsonString = jsonString.replace(/(\d+)\.(?=\s*[\,\}])/g, '$1.0');
+
+    const parsedData = JSON.parse(jsonString);
+
+    if (parsedData && parsedData.asset && parsedData.direction) {
+      // Only proceed if we have either entry price or target price
+      if (parsedData.entry_price === null && parsedData.target_price === null) {
+        console.log('No explicit entry or target price found.');
+        return null;
+      }
+
+      // Calculate risk/reward if we have both target and stop
+      if (parsedData.target_price !== null && parsedData.stop_loss !== null && parsedData.entry_price !== null) {
+        const direction = parsedData.direction.toLowerCase();
+        const risk = Math.abs(parsedData.entry_price - parsedData.stop_loss);
+        const reward = Math.abs(parsedData.target_price - parsedData.entry_price);
+
+        if (risk === 0) {
+           parsedData.risk_reward = null; // Avoid division by zero
+        } else {
+          parsedData.risk_reward = direction === 'long' ?
+            reward / risk :
+            risk / reward;
+        }
+      }
+
+      return {
+        ...parsedData,
+        status: 'open'
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse trade data:', e);
+    console.log('Problematic AI response:', result); // Log the raw response that failed parsing
+  }
+  // Return null instead of throwing so the chat can continue
+  return null;
 }
 
 /**

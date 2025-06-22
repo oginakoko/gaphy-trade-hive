@@ -194,11 +194,11 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
             .order('created_at', { ascending: false })
             .limit(50),
           supabase.from('servers')
-            .select('id, name, description, image_url, owner_id, created_at, is_public, member_count')
+            .select('id, name, description, image_url, owner_id, created_at, is_public')
             .order('created_at', { ascending: false })
             .limit(50),
           supabase.from('profiles')
-            .select('id, username, avatar_url, is_admin, is_banned')
+            .select('id, username, avatar_url, is_admin')
             .limit(100),
           supabase.from('ads')
             .select('id, title, content, link_url, media_url, media_type, status, start_date, end_date, cost')
@@ -305,69 +305,6 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
         }
       }
 
-      const aiResponse = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messages: messagesToSend }),
-      });
-
-      if (!aiResponse.ok) {
-        const errorData = await aiResponse.json();
-        throw new Error(errorData.error || 'Failed to get response from AI service');
-      }
-
-      let streamedContent = '';
-      const reader = aiResponse.body?.getReader();
-      if (!reader) {
-        throw new Error("Failed to get reader from response body");
-      }
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const decodedValue = new TextDecoder().decode(value);
-        streamedContent += decodedValue;
-        // Update the last bot message with streamed content
-        setMessages(prev => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage.sender === 'bot') {
-            return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent }];
-          }
-          return prev;
-        });
-        // Add a small delay for more natural streaming
-        await new Promise(res => setTimeout(res, 40));
-      }
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Message stream aborted');
-        // Append a message indicating interruption
-        setMessages(prev => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage.sender === 'bot') {
-            return [...prev.slice(0, -1), { ...lastMessage, text: lastMessage.text + '\n\n*(Response interrupted)*' }];
-          }
-          return prev;
-        });
-      } else {
-        console.error('Error streaming message:', error);
-        // Append an error message
-        setMessages(prev => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage.sender === 'bot') {
-            return [...prev.slice(0, -1), { ...lastMessage, text: lastMessage.text + '\n\n*(Error receiving response)*' }];
-          }
-          return prev;
-        });
-        toast({
-          title: 'AI Error',
-          description: 'Failed to get response from AI service.',
-          variant: 'destructive',
-        });
-      }
     } finally {
       setIsBotThinking(false);
       abortController.current = null;
