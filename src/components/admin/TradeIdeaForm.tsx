@@ -12,7 +12,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,9 +31,30 @@ import remarkGfm from 'remark-gfm';
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   instrument: z.string().min(1, 'Instrument is required'),
-  breakdown: z.string().min(1, 'Breakdown is required'),
+  breakdown: z.string().min(1, 'Breakdown is required').transform((str) => str.split('\n').map((line) => line.trim()).filter(Boolean)),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   tags: z.string().optional().transform((str) => str?.split(',').map((tag) => tag.trim()).filter(Boolean) || []),
+  status: z.enum(['open', 'closed', 'cancelled']).default('open'),
+  entry_price: z.preprocess(
+    (val) => (val === '' ? null : Number(val)),
+    z.number().nullable().optional()
+  ),
+  target_price: z.preprocess(
+    (val) => (val === '' ? null : Number(val)),
+    z.number().nullable().optional()
+  ),
+  stop_loss: z.preprocess(
+    (val) => (val === '' ? null : Number(val)),
+    z.number().nullable().optional()
+  ),
+  risk_reward: z.preprocess(
+    (val) => (val === '' ? null : Number(val)),
+    z.number().nullable().optional()
+  ),
+  sentiment: z.enum(['Bullish', 'Bearish', 'Neutral']).nullable().optional(),
+  key_points: z.string().optional().transform((str) => str?.split(',').map((point) => point.trim()).filter(Boolean) || []),
+  direction: z.enum(['Long', 'Short']).nullable().optional(),
+  is_pinned: z.boolean().default(false),
 });
 
 type TradeIdeaFormValues = z.infer<typeof formSchema>;
@@ -54,9 +77,18 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
     defaultValues: {
       title: initialData?.title || '',
       instrument: initialData?.instrument || '',
-      breakdown: initialData?.breakdown || '',
+      breakdown: initialData?.breakdown?.join('\n') || '',
       image_url: initialData?.image_url || '',
       tags: initialData?.tags || [],
+      status: initialData?.status || 'open',
+      entry_price: initialData?.entry_price === null ? '' : initialData?.entry_price ?? '',
+      target_price: initialData?.target_price === null ? '' : initialData?.target_price ?? '',
+      stop_loss: initialData?.stop_loss === null ? '' : initialData?.stop_loss ?? '',
+      risk_reward: initialData?.risk_reward === null ? '' : initialData?.risk_reward ?? '',
+      sentiment: initialData?.sentiment === null ? '' : initialData?.sentiment ?? '',
+      key_points: initialData?.key_points?.join(', ') || '',
+      direction: initialData?.direction === null ? '' : initialData?.direction ?? '',
+      is_pinned: initialData?.is_pinned || false,
     },
   });
 
@@ -155,6 +187,15 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
         breakdown: values.breakdown,
         tags: values.tags,
         image_url: values.image_url || null,
+        status: values.status,
+        entry_price: values.entry_price,
+        target_price: values.target_price,
+        stop_loss: values.stop_loss,
+        risk_reward: values.risk_reward,
+        sentiment: values.sentiment,
+        key_points: values.key_points,
+        direction: values.direction,
+        is_pinned: values.is_pinned,
       };
 
       let tradeIdeaId: number;
@@ -341,7 +382,7 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
                     <h3 className="text-sm font-medium text-gray-300 mb-2">Preview:</h3>
                     <div className="prose prose-invert prose-sm max-w-none break-words">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {field.value.replace(/\[MEDIA:[^\]]+\]/g, '')}
+                        {(String(field.value || '')).replace(/\[MEDIA:[^\]]+\]/g, '')}
                       </ReactMarkdown>
                       <InlineMediaRenderer
                         content={field.value}
@@ -380,6 +421,141 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
                   <Input placeholder="e.g., crypto, btc, long" {...field} className="glass-input" />
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Status</FormLabel>
+                <FormControl>
+                  <Input {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="entry_price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Entry Price</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="target_price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Target Price</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="stop_loss"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Stop Loss</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="risk_reward"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Risk/Reward</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="sentiment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Sentiment</FormLabel>
+                <FormControl>
+                  <Input {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="key_points"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Key Points (comma-separated)</FormLabel>
+                <FormControl>
+                  <Input {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="direction"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Direction</FormLabel>
+                <FormControl>
+                  <Input {...field} className="glass-input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="is_pinned"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-white">
+                    Pin this trade idea to the top
+                  </FormLabel>
+                  <FormDescription>
+                    Pinned trade ideas will always appear at the top of the list.
+                  </FormDescription>
+                </div>
               </FormItem>
             )}
           />

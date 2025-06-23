@@ -8,7 +8,7 @@ import Header from '@/components/layout/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Comments from '@/components/comments/Comments';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,6 +29,7 @@ import {
 interface ExtendedTradeIdea extends TradeIdea {
   media: MediaItem[];
   breakdown: string[]; // Ensure breakdown is typed as string[]
+  is_pinned: boolean;
 }
 
 const fetchTradeIdea = async (id: string): Promise<ExtendedTradeIdea> => {
@@ -52,8 +53,16 @@ const fetchTradeIdea = async (id: string): Promise<ExtendedTradeIdea> => {
     throw new Error(ideaResponse.error.message);
   }
 
+  if (!ideaResponse.data) {
+    throw new Error('Trade idea not found');
+  }
+
   const idea = ideaResponse.data as ExtendedTradeIdea;
   idea.media = [];
+  // Ensure breakdown is always an array
+  if (!idea.breakdown) {
+    idea.breakdown = [];
+  }
 
   if (!mediaResponse.error && mediaResponse.data) {
     console.log('Fetched media items:', mediaResponse.data);
@@ -187,6 +196,28 @@ const TradeIdeaPage = () => {
                     initialLikesCount={idea.likes?.[0]?.count || 0}
                     initialIsLiked={!!userHasLiked}
                   />
+                  {user && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${idea.is_pinned ? 'text-brand-green' : 'text-gray-400'} hover:text-white hover:bg-white/10 rounded-full`}
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from('trade_ideas')
+                          .update({ is_pinned: !idea.is_pinned })
+                          .eq('id', idea.id);
+
+                        if (error) {
+                          console.error('Error updating pin status:', error);
+                        } else {
+                          // Optimistically update the idea object to reflect the change
+                          idea.is_pinned = !idea.is_pinned;
+                        }
+                      }}
+                    >
+                      <Pin size={12} />
+                    </Button>
+                  )}
                 </div>
               </div>
 

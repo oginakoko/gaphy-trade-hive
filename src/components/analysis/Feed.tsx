@@ -11,9 +11,10 @@ interface FeedProps {
     userLikes: Set<number>;
     isAdmin: boolean;
     onEditIdea: (idea: TradeIdea) => void;
+    onPinIdea: (ideaId: string | number, isPinned: boolean) => void;
 }
 
-const Feed = ({ feed, isLoading, error, userLikes, isAdmin, onEditIdea }: FeedProps) => {
+const Feed = ({ feed, isLoading, error, userLikes, isAdmin, onEditIdea, onPinIdea }: FeedProps) => {
     if (isLoading) {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -49,6 +50,7 @@ const Feed = ({ feed, isLoading, error, userLikes, isAdmin, onEditIdea }: FeedPr
                     userLikes={userLikes}
                     isAdmin={isAdmin}
                     onEditIdea={onEditIdea}
+                    onPinIdea={onPinIdea}
                 />
             ))}
         </div>

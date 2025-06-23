@@ -128,7 +128,7 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
 
   const renderContent = () => {
     // Split content by media placeholders and render each part
-    const parts = content.split(/(\[MEDIA:[^\]]+\])/g);
+    const parts = String(content || '').split(/(\[MEDIA:[^\]]+\])/g);
     
     return parts.map((part, index) => {
       // Check if this part is a media placeholder

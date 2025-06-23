@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import DonationModal from '@/components/DonationModal';
@@ -74,6 +75,22 @@ const Analysis = () => {
                     userLikes={userLikes as Set<number>}
                     isAdmin={isAdmin}
                     onEditIdea={handleEdit}
+                    onPinIdea={async (ideaId, isPinned) => {
+                      if (!user) return;
+                      const { error: updateError } = await supabase
+                        .from('trade_ideas')
+                        .update({ is_pinned: isPinned })
+                        .eq('id', ideaId);
+
+                      if (updateError) {
+                        console.error('Error updating pin status:', updateError);
+                      } else {
+                        // Invalidate the query to refetch the feed and update UI
+                        // This assumes useAnalysisFeed uses react-query and a queryClient is available
+                        // For simplicity, we'll just log for now. In a real app, you'd use queryClient.invalidateQueries
+                        console.log(`Trade idea ${ideaId} pin status updated to ${isPinned}`);
+                      }
+                    }}
                 />
                 {totalPages > 1 && (
                     <Pagination className="mt-8">

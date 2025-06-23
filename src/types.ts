@@ -10,6 +10,15 @@ export type TradeIdea = {
   image_url: string | null;
   tags: string[] | null;
   user_id: string | null;
+  status: string;
+  entry_price: string | null;
+  target_price: string | null;
+  stop_loss: string | null;
+  risk_reward: string | null;
+  sentiment: string | null;
+  key_points: string[] | null;
+  direction: string | null;
+  is_pinned: boolean;
   profiles?: {
     username: string | null;
     avatar_url: string | null;

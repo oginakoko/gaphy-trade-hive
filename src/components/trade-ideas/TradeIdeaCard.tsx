@@ -1,5 +1,5 @@
 import { TradeIdea } from '@/types';
-import { ArrowUpRight, Edit, Share } from 'lucide-react';
+import { ArrowUpRight, Edit, Share, Pin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,9 +15,11 @@ interface TradeIdeaCardProps {
   userHasLiked: boolean;
   isAdmin: boolean;
   onEdit: (idea: TradeIdea) => void;
+  onPin: (ideaId: string | number, isPinned: boolean) => void;
+  isPinned: boolean;
 }
 
-const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: TradeIdeaCardProps) => {
+const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit, onPin, isPinned }: TradeIdeaCardProps) => {
   const [copiedItemId, setCopiedItemId] = useState<string | number | null>(null);
   const authorName = idea.profiles?.username || 'Anonymous';
   const authorAvatar = idea.profiles?.avatar_url || '/placeholder.svg';
@@ -68,14 +70,26 @@ const TradeIdeaCard = ({ idea, likesCount, userHasLiked, isAdmin, onEdit }: Trad
           <Share size={12} />
         </Button>
         {isAdmin && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
-            onClick={() => onEdit(idea)}
-          >
-            <Edit size={12} />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+              onClick={() => onEdit(idea)}
+            >
+              <Edit size={12} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${isPinned ? 'text-brand-green' : 'text-gray-400'} hover:text-white hover:bg-white/10 rounded-full`}
+              onClick={() => {
+                onPin(idea.id, !isPinned);
+              }}
+            >
+              <Pin size={12} />
+            </Button>
+          </>
         )}
       </div>
       <Link to={`/trade-ideas/${idea.id}`} className="block">

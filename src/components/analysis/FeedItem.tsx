@@ -11,9 +11,10 @@ interface FeedItemProps {
   userLikes: Set<number>;
   isAdmin?: boolean;
   onEditIdea?: (idea: TradeIdea) => void;
+  onPinIdea?: (ideaId: string | number, isPinned: boolean) => void;
 }
 
-const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemProps) => {
+const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea, onPinIdea }: FeedItemProps) => {
   if (item.viewType === 'idea') {
     const tradeIdea = item as TradeIdea & { viewType: 'idea' };
     const ideaIdAsNumber = typeof tradeIdea.id === 'number' ? tradeIdea.id : parseInt(String(tradeIdea.id));
@@ -27,6 +28,8 @@ const FeedItemComponent = ({ item, userLikes, isAdmin, onEditIdea }: FeedItemPro
         userHasLiked={userHasLiked}
         isAdmin={isAdmin || false}
         onEdit={onEditIdea || (() => {})}
+        onPin={onPinIdea || (() => {})}
+        isPinned={tradeIdea.is_pinned}
       />
     );
   }

@@ -16,7 +16,20 @@ CREATE TABLE IF NOT EXISTS public.trade_ideas (
   content text,
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   created_at timestamptz NOT NULL DEFAULT NOW(),
-  updated_at timestamptz NOT NULL DEFAULT NOW()
+  updated_at timestamptz NOT NULL DEFAULT NOW(),
+  instrument text,
+  breakdown text,
+  image_url text,
+  tags text[],
+  status text DEFAULT 'open'::text NOT NULL,
+  entry_price numeric,
+  target_price numeric,
+  stop_loss numeric,
+  risk_reward numeric,
+  sentiment text,
+  key_points text[],
+  direction text,
+  is_pinned boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.servers (

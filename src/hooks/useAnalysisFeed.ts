@@ -10,7 +10,7 @@ const fetchTradeIdeas = async (page: number, itemsPerPage: number): Promise<{ id
 
     const { data: ideas, error, count } = await supabase
         .from('trade_ideas')
-        .select('*, profiles(username, avatar_url), likes(count)', { count: 'exact' })
+        .select('*, profiles(username, avatar_url), likes(count), is_pinned', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(start, end);
 
