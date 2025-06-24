@@ -44,12 +44,15 @@ export function BroadcastDialog({ isOpen, onClose }: BroadcastDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
-          <div className="bg-brand-green/10 border border-brand-green/20 rounded-lg p-4">
-            <h4 className="text-brand-green font-medium mb-2">Admin Broadcast</h4>
-            <p className="text-sm text-gray-400">
-              This message will be sent to all users and will appear at the top of their messages.
-              Use this for important announcements only.
-            </p>
+          <div className="bg-brand-green/10 border border-brand-green/20 rounded-lg p-4 flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-brand-green flex-shrink-0" />
+            <div>
+              <h4 className="text-brand-green font-medium mb-1">Admin Broadcast</h4>
+              <p className="text-sm text-gray-400">
+                This message will be sent to all users and will appear at the top of their messages.
+                Use this for important announcements only.
+              </p>
+            </div>
           </div>
           <Textarea
             placeholder="Type your broadcast message..."

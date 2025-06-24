@@ -14,10 +14,12 @@ export interface PrivateMessage {
   sender?: {
     username: string | null;
     avatar_url: string | null;
+    is_admin?: boolean;
   };
   recipient?: {
     username: string | null;
     avatar_url: string | null;
+    is_admin?: boolean;
   };
 }
 

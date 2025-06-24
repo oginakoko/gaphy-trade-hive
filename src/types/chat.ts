@@ -35,4 +35,6 @@ export interface Conversation {
   messages: Message[];
   unread_count: number;
   is_support_chat?: boolean;
+  is_blocked_by_me?: boolean;
+  is_blocked_by_other?: boolean;
 }

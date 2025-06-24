@@ -6,12 +6,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, UserPlus, UserMinus, MessageCircle, Search } from 'lucide-react';
 import { useProfiles } from '@/hooks/useProfiles';
-import { useFollows } from '@/hooks/useFollows';
 import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types';
+import { useBlockUser } from '@/hooks/useBlockUser';
 
 interface UserDiscoveryProps {
   isOpen: boolean;
@@ -24,34 +24,37 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
   const { user } = useAuth();
   const { profiles, loading } = useProfiles(search);
   const { toast } = useToast();
-  const { following, isFollowing, followUser, unfollowUser, checkMutualFollow } = useFollows();
-  const [followLoading, setFollowLoading] = useState<string | null>(null);
+  const { blockUser, unblockUser, isBlockedByMe } = useBlockUser();
+  const [followLoading, setFollowLoading] = useState<string | null>(null); // Renamed to be more generic for any action loading
 
-  const filteredUsers = profiles?.filter(profile => 
-    profile.id !== user?.id && 
+  const filteredUsers = profiles?.filter(profile =>
+    profile.id !== user?.id &&
     (!search || profile.username?.toLowerCase().includes(search.toLowerCase()))
-  ) || [];
+  ).map(profile => ({
+    ...profile,
+    is_blocked_by_me: isBlockedByMe(profile.id),
+  })) || [];
 
-  const handleFollowToggle = async (userId: string) => {
+  const handleBlockToggle = async (userId: string, currentlyBlocked: boolean) => {
     if (!user) return;
-    
-    setFollowLoading(userId);
+
+    setFollowLoading(userId); // Using the same loading state for simplicity
     try {
-      if (isFollowing(userId)) {
-        await unfollowUser(userId);
+      if (currentlyBlocked) {
+        await unblockUser(userId);
         toast({
-          description: 'User unfollowed successfully',
+          description: 'User unblocked successfully',
         });
       } else {
-        await followUser(userId);
+        await blockUser(userId);
         toast({
-          description: 'User followed successfully',
+          description: 'User blocked successfully',
         });
       }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update follow status',
+        description: 'Failed to update block status',
         variant: 'destructive',
       });
     } finally {
@@ -59,16 +62,16 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
     }
   };
 
-  const handleStartChat = (userId: string) => {
-    const canChat = checkMutualFollow(userId);
-    if (canChat) {
-      onStartChat?.(userId);
-      onClose();
-    } else {
+  const handleStartChat = (userId: string, isBlocked: boolean) => {
+    if (isBlocked) {
       toast({
-        description: 'You need to follow each other to start a chat',
+        description: 'You cannot message a user who has blocked you.',
+        variant: 'destructive',
       });
+      return;
     }
+    onStartChat?.(userId);
+    onClose();
   };
 
   return (
@@ -76,7 +79,7 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
       <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-white text-xl">Discover Traders</DialogTitle>
-          <p className="text-gray-400">Find and connect with other traders in the community</p>
+          <DialogDescription className="text-gray-400">Find and connect with other traders in the community</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -108,8 +111,7 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
                   <Card
                     key={profile.id}
                     className={cn(
-                      'p-4 transition-colors border-gray-700 hover:bg-gray-800/50',
-                      checkMutualFollow(profile.id) && 'bg-brand-green/10 border-brand-green/30'
+                      'p-4 transition-colors border-gray-700 hover:bg-gray-800/50'
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -122,42 +124,47 @@ export function UserDiscovery({ isOpen, onClose, onStartChat }: UserDiscoveryPro
                         </Avatar>
                         <div>
                           <h4 className="font-medium text-white">{profile.username}</h4>
-                          {checkMutualFollow(profile.id) && (
-                            <p className="text-sm text-brand-green">Mutual Follow</p>
+                          {profile.is_admin && (
+                            <p className="text-sm text-blue-400">Admin</p>
+                          )}
+                          {profile.is_blocked_by_me && (
+                            <p className="text-sm text-red-400">Blocked</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleFollowToggle(profile.id)}
-                          disabled={followLoading === profile.id}
-                          className={cn(
-                            'border-gray-700',
-                            isFollowing(profile.id)
-                              ? 'text-red-400 hover:text-red-300 hover:border-red-400/30'
-                              : 'text-brand-green hover:text-brand-green/90 hover:border-brand-green/30'
-                          )}
-                        >
-                          {followLoading === profile.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : isFollowing(profile.id) ? (
-                            <UserMinus className="h-4 w-4" />
-                          ) : (
-                            <UserPlus className="h-4 w-4" />
-                          )}
-                        </Button>
-                        {checkMutualFollow(profile.id) && (
+                        {!profile.is_admin && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleStartChat(profile.id)}
-                            className="text-brand-green border-brand-green/30 hover:bg-brand-green/10"
+                            onClick={() => handleBlockToggle(profile.id, profile.is_blocked_by_me)}
+                            disabled={followLoading === profile.id}
+                            className={cn(
+                              'border-gray-700',
+                              profile.is_blocked_by_me
+                                ? 'text-red-400 hover:text-red-300 hover:border-red-400/30'
+                                : 'text-yellow-400 hover:text-yellow-300 hover:border-yellow-400/30'
+                            )}
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            {followLoading === profile.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : profile.is_blocked_by_me ? (
+                              <UserMinus className="h-4 w-4 mr-1" />
+                            ) : (
+                              <UserPlus className="h-4 w-4 mr-1" />
+                            )}
+                            {profile.is_blocked_by_me ? 'Unblock' : 'Block'}
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStartChat(profile.id, profile.is_blocked_by_me || false)}
+                          className="text-brand-green border-brand-green/30 hover:bg-brand-green/10"
+                        >
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          Message
+                        </Button>
                       </div>
                     </div>
                   </Card>

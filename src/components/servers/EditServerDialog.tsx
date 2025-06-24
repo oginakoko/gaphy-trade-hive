@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import ImageUploader from '@/components/shared/ImageUploader';
 import { useServers } from '@/hooks/useServers';
 import { toast } from '@/components/ui/use-toast';
@@ -72,6 +72,9 @@ const EditServerDialog = ({ server, isOpen, onClose }: EditServerDialogProps) =>
       <DialogContent className="glass-card">
         <DialogHeader>
           <DialogTitle className="text-white">Edit Server</DialogTitle>
+          <DialogDescription>
+            Update your server's details and settings.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>

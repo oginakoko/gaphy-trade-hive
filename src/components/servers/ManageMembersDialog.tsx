@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -91,6 +92,9 @@ const ManageMembersDialog = ({ server, isOpen, onClose }: ManageMembersDialogPro
           <DialogTitle className="text-white flex items-center gap-2">
             Manage Members
           </DialogTitle>
+          <DialogDescription>
+            Add or remove members from your server and manage their roles.
+          </DialogDescription>
         </DialogHeader>
 
         {!isServerOwner && (          <Alert className="mb-4 bg-yellow-500/20 border-yellow-500/50">

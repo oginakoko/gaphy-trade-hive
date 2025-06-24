@@ -20,9 +20,26 @@ BEGIN
     END LOOP;
 END $$;
 
+-- Add foreign key constraints to private_messages if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'private_messages_sender_id_fkey') THEN
+        ALTER TABLE public.private_messages
+        ADD CONSTRAINT private_messages_sender_id_fkey
+        FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'private_messages_recipient_id_fkey') THEN
+        ALTER TABLE public.private_messages
+        ADD CONSTRAINT private_messages_recipient_id_fkey
+        FOREIGN KEY (recipient_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 -- First ensure the admin user has admin privileges
-UPDATE public.profiles 
-SET is_admin = true 
+UPDATE public.profiles
+SET is_admin = true
 WHERE id = '73938002-b3f8-4444-ad32-6a46cbf8e075';
 
 -- Create index for faster admin checks
@@ -91,7 +108,7 @@ WITH CHECK (
 );
 
 -- Add UNIQUE constraint to prevent duplicate follows if not exists
-DO $$ 
+DO $$
 BEGIN
     ALTER TABLE public.user_follows ADD CONSTRAINT user_follows_unique_follow UNIQUE (follower_id, following_id);
 EXCEPTION
