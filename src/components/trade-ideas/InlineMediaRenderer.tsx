@@ -127,36 +127,20 @@ const InlineMediaRenderer = ({ content, mediaItems }: InlineMediaRendererProps) 
   };
 
   const renderContent = () => {
-    // Split content by media placeholders and render each part
-    const parts = String(content || '').split(/(\[MEDIA:[^\]]+\])/g);
-    
-    return parts.map((part, index) => {
-      // Check if this part is a media placeholder
-      const mediaMatch = part.match(/\[MEDIA:([^\]]+)\]/);
-      
-      if (mediaMatch) {
-        const mediaId = mediaMatch[1];
-        const mediaItem = mediaItems.find(item => item.id === mediaId);
-        
-        if (mediaItem) {
-          // Use mediaId for key
-          return (
-            <div key={`media-${mediaId}`}>{renderMediaContent(mediaItem)}</div>
-          );
-        }
-        return null;
-      }
-      
-      // For non-media parts, render as markdown if non-empty
-      if (part.trim()) {
-        return (
-          <div key={`text-${index}`} className="prose prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>
-          </div>
-        );
-      }
-      return null;
-    }).filter(Boolean); // Remove null entries
+    // Render the text content first
+    const textContent = String(content || '').replace(/\[MEDIA:[^\]]+\]/g, '');
+    const textElement = textContent.trim() ? (
+      <div key="text-content" className="prose prose-invert max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{textContent}</ReactMarkdown>
+      </div>
+    ) : null;
+
+    // Render all media items after the text content based on their order in mediaItems
+    const mediaElements = mediaItems.map((item, index) => (
+      <div key={`media-${item.id || index}`}>{renderMediaContent(item)}</div>
+    ));
+
+    return [textElement, ...mediaElements].filter(Boolean); // Remove null entries
   };
 
   return (

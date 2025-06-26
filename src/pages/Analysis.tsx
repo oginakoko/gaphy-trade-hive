@@ -12,7 +12,7 @@ import TopServers from '@/components/analysis/TopServers';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
+import TradeIdeaForm from '@/components/trade-ideas/TradeIdeaForm';
 import { TradeIdea } from '@/types';
 import {
   Pagination,
@@ -43,8 +43,7 @@ const Analysis = () => {
   };
   
   const handleEdit = (idea: TradeIdea) => {
-    setEditingIdea(idea);
-    setFormOpen(true);
+    window.location.href = `/create-trade-idea/${idea.id}`;
   };
 
   const handleFormOpenChange = (open: boolean) => {
@@ -131,17 +130,7 @@ const Analysis = () => {
         </div>
       </main>
 
-      {/* Keep the edit modal for existing trade ideas */}
-      <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
-        <DialogContent className="glass-card border-brand-green/20 sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-white">Edit Trade Idea</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
-                <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />
-            </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      {/* Removed edit modal as editing now navigates to create page */}
       
       <Button 
         onClick={() => setDonationModalOpen(true)}

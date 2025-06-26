@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PlusCircle, Edit, Trash2, ArrowLeft } from 'lucide-react';
-import TradeIdeaForm from '@/components/admin/TradeIdeaForm';
+import TradeIdeaForm from '@/components/trade-ideas/TradeIdeaForm';
 import { TradeIdea } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,10 +39,11 @@ import { useNavigate } from 'react-router-dom';
 const fetchTradeIdeas = async (): Promise<TradeIdea[]> => {
     const { data, error } = await supabase
         .from('trade_ideas')
-        .select('*')
+        .select('id, title, instrument, breakdown, image_url, tags, user_id, likes, created_at, is_pinned')
         .order('created_at', { ascending: false });
 
     if (error) {
+        console.error('Supabase query failed:', error.message, error.details);
         throw new Error(error.message);
     }
     return data as TradeIdea[];
@@ -87,8 +88,7 @@ const ManageTradeIdeasPage = () => {
     };
 
     const handleEdit = (idea: TradeIdea) => {
-        setEditingIdea(idea);
-        setFormOpen(true);
+        navigate(`/create-trade-idea/${idea.id}`);
     };
     
     const handleFormOpenChange = (open: boolean) => {
@@ -116,16 +116,7 @@ const ManageTradeIdeasPage = () => {
                     </Button>
                 </div>
 
-                <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
-                    <DialogContent className="glass-card border-brand-green/20 sm:max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-white">{editingIdea ? 'Edit' : 'Create a New'} Trade Idea</DialogTitle>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
-                            <TradeIdeaForm setOpen={setFormOpen} initialData={editingIdea} />
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
+                {/* Removed edit modal as editing now navigates to create page */}
                 
                 <div className="glass-card p-0 overflow-hidden">
                     {isLoading && <p className="text-center text-gray-400 p-8">Loading trade ideas...</p>}

@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { TradeIdea } from '@/types';
 import { MediaItem } from '@/types/media';
-import ImageUploader from './ImageUploader';
+import ImageUploader from '@/components/trade-ideas/ImageUploader';
 import { useState, useRef, useEffect } from 'react';
 import MediaSelector from '@/components/trade-ideas/MediaSelector';
 import MediaPreview from '@/components/trade-ideas/MediaPreview';
@@ -31,9 +31,9 @@ import remarkGfm from 'remark-gfm';
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   instrument: z.string().min(1, 'Instrument is required'),
-  breakdown: z.string().min(1, 'Breakdown is required').transform((str) => str.split('\n').map((line) => line.trim()).filter(Boolean)),
+  breakdown: z.string().min(1, 'Breakdown is required'),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  tags: z.string().optional().transform((str) => str?.split(',').map((tag) => tag.trim()).filter(Boolean) || []),
+  tags: z.string().optional(),
   status: z.enum(['open', 'closed', 'cancelled']).default('open'),
   entry_price: z.preprocess(
     (val) => (val === '' ? null : Number(val)),
@@ -52,9 +52,10 @@ const formSchema = z.object({
     z.number().nullable().optional()
   ),
   sentiment: z.enum(['Bullish', 'Bearish', 'Neutral']).nullable().optional(),
-  key_points: z.string().optional().transform((str) => str?.split(',').map((point) => point.trim()).filter(Boolean) || []),
+  key_points: z.string().optional(),
   direction: z.enum(['Long', 'Short']).nullable().optional(),
   is_pinned: z.boolean().default(false),
+  is_featured: z.boolean().default(false),
 });
 
 type TradeIdeaFormValues = z.infer<typeof formSchema>;
@@ -77,18 +78,19 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
     defaultValues: {
       title: initialData?.title || '',
       instrument: initialData?.instrument || '',
-      breakdown: initialData?.breakdown?.join('\n') || '',
+      breakdown: initialData?.breakdown ? (Array.isArray(initialData.breakdown) ? initialData.breakdown.join('\n') : initialData.breakdown) : '',
       image_url: initialData?.image_url || '',
-      tags: initialData?.tags || [],
-      status: initialData?.status || 'open',
-      entry_price: initialData?.entry_price === null ? '' : initialData?.entry_price ?? '',
-      target_price: initialData?.target_price === null ? '' : initialData?.target_price ?? '',
-      stop_loss: initialData?.stop_loss === null ? '' : initialData?.stop_loss ?? '',
-      risk_reward: initialData?.risk_reward === null ? '' : initialData?.risk_reward ?? '',
-      sentiment: initialData?.sentiment === null ? '' : initialData?.sentiment ?? '',
-      key_points: initialData?.key_points?.join(', ') || '',
-      direction: initialData?.direction === null ? '' : initialData?.direction ?? '',
+      tags: initialData?.tags ? (Array.isArray(initialData.tags) ? initialData.tags.join(', ') : initialData.tags) : '',
+      status: initialData?.status && typeof initialData.status === 'string' && ['open', 'closed', 'cancelled'].includes(initialData.status) ? initialData.status as 'open' | 'closed' | 'cancelled' : 'open',
+      entry_price: initialData?.entry_price !== undefined ? (typeof initialData.entry_price === 'string' ? parseFloat(initialData.entry_price) || null : initialData.entry_price) : null,
+      target_price: initialData?.target_price !== undefined ? (typeof initialData.target_price === 'string' ? parseFloat(initialData.target_price) || null : initialData.target_price) : null,
+      stop_loss: initialData?.stop_loss !== undefined ? (typeof initialData.stop_loss === 'string' ? parseFloat(initialData.stop_loss) || null : initialData.stop_loss) : null,
+      risk_reward: initialData?.risk_reward !== undefined ? (typeof initialData.risk_reward === 'string' ? parseFloat(initialData.risk_reward) || null : initialData.risk_reward) : null,
+      sentiment: initialData?.sentiment && typeof initialData.sentiment === 'string' && ['Bullish', 'Bearish', 'Neutral'].includes(initialData.sentiment) ? initialData.sentiment as 'Bullish' | 'Bearish' | 'Neutral' : null,
+      key_points: initialData?.key_points ? (Array.isArray(initialData.key_points) ? initialData.key_points.join(', ') : initialData.key_points) : '',
+      direction: initialData?.direction && typeof initialData.direction === 'string' && ['Long', 'Short'].includes(initialData.direction) ? initialData.direction as 'Long' | 'Short' : null,
       is_pinned: initialData?.is_pinned || false,
+      is_featured: false, // Default to false since it may not exist in the type definition
     },
   });
 
@@ -181,22 +183,26 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
     mutationFn: async (values: TradeIdeaFormValues) => {
       if (!user) throw new Error('User not authenticated');
 
+      // Admin check - replace with your admin user ID or role check
+      if (values.is_featured && user.id !== '73938002-b3f8-4444-ad32-6a46cbf8e075') {
+        throw new Error("You are not authorized to feature trade ideas.");
+      }
+      
       const ideaData = {
         title: values.title,
         instrument: values.instrument,
         breakdown: values.breakdown,
-        tags: values.tags,
+        tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         image_url: values.image_url || null,
-        status: values.status,
-        entry_price: values.entry_price,
-        target_price: values.target_price,
-        stop_loss: values.stop_loss,
-        risk_reward: values.risk_reward,
-        sentiment: values.sentiment,
-        key_points: values.key_points,
-        direction: values.direction,
         is_pinned: values.is_pinned,
+        // AI-computed fields are excluded from manual update
+        // status, entry_price, target_price, stop_loss, risk_reward, sentiment, key_points, direction are computed by AI
+        // is_featured is excluded to prevent database errors
       };
+      if (ideaData.breakdown) {
+        // Convert breakdown to an array of non-empty lines for database storage
+        ideaData.breakdown = ideaData.breakdown.split('\n').map(line => line.trim()).filter(Boolean);
+      }
 
       let tradeIdeaId: number;
 
@@ -425,117 +431,8 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Status</FormLabel>
-                <FormControl>
-                  <Input {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="entry_price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Entry Price</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="target_price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Target Price</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="stop_loss"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Stop Loss</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="risk_reward"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Risk/Reward</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sentiment"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Sentiment</FormLabel>
-                <FormControl>
-                  <Input {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="key_points"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Key Points (comma-separated)</FormLabel>
-                <FormControl>
-                  <Input {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="direction"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Direction</FormLabel>
-                <FormControl>
-                  <Input {...field} className="glass-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Removed fields for AI-computed values */}
+          {/* Status, Entry Price, Target Price, Stop Loss, Risk/Reward, Sentiment, Key Points, and Direction are computed by AI */}
 
           <FormField
             control={form.control}
@@ -554,6 +451,29 @@ const TradeIdeaForm = ({ setOpen, initialData }: TradeIdeaFormProps) => {
                   </FormLabel>
                   <FormDescription>
                     Pinned trade ideas will always appear at the top of the list.
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="is_featured"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-white">
+                    Feature this trade idea
+                  </FormLabel>
+                  <FormDescription>
+                    Featured trade ideas are highlighted on the platform.
                   </FormDescription>
                 </div>
               </FormItem>

@@ -2,7 +2,7 @@ export interface TradeIdea {
   id: number;
   title: string;
   instrument: string;
-  breakdown: string;
+  breakdown: string | string[];
   image_url: string | null;
   tags: string[];
   status: 'open' | 'closed' | 'cancelled';
@@ -14,6 +14,7 @@ export interface TradeIdea {
   key_points: string[];
   direction: 'Long' | 'Short' | null;
   is_pinned: boolean;
+  is_featured: boolean;
   user_id: string;
   created_at: string;
   updated_at: string;

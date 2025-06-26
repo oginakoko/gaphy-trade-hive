@@ -25,6 +25,7 @@ import ManageApiKeys from "./pages/admin/ManageApiKeys";
 import Servers from "./pages/Servers";
 import ShortlinkRedirect from "./pages/ShortlinkRedirect";
 import CreateTradeIdea from "./pages/CreateTradeIdea";
+import EditTradeIdea from "./pages/EditTradeIdea";
 import Support from "./pages/Support";
 import AdminMessages from "./pages/admin/messages";
 import { HelmetProvider } from 'react-helmet-async';
@@ -68,6 +69,8 @@ const App = () => (
                   <Route path="/admin/users" element={<ManageUsers />} />
                   <Route path="/admin/api-keys" element={<ManageApiKeys />} />
                   <Route path="/create-trade-idea" element={<CreateTradeIdea />} />
+                  <Route path="/create-trade-idea/:id" element={<CreateTradeIdea />} />
+                  <Route path="/edit-trade-idea/:id" element={<EditTradeIdea />} />
                 </Route>
                 
                 {/* Redirect route for shortlinks */}

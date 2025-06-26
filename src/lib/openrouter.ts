@@ -10,7 +10,17 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const API_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 // R1 is one of the most powerful open source models that has a free tier
-const DEFAULT_MODEL = 'mistralai/mixtral-8x7b-instruct';
+const DEFAULT_MODEL = 'meta-llama/llama-4-maverick:free';
+const FALLBACK_MODELS_OPENROUTER = [
+  'meta-llama/llama-4-maverick:free',
+  'meta-llama/llama-4-scout:free',
+  'openchat/openchat-3.5:free'
+];
+const FALLBACK_MODELS_GEMINI = [
+  'google/gemini-pro',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.5-flash-lite'
+];
 
 export interface TradeData {
   asset: string;
@@ -89,7 +99,7 @@ fetchAvailableModels().catch(console.error);
 
 const FALLBACK_OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || '') as string;
 const GEMINI_API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || '') as string;
-const FALLBACK_MODEL = 'google/gemini-pro'; // Gemini 2.0 is now Gemini Pro
+const FALLBACK_MODEL = 'google/gemini-pro'; // Default Gemini model
 
 export function setFallbackOpenRouterKey(key: string) {
   // This function might not be needed if keys are always from env
@@ -101,17 +111,15 @@ export function setFallbackOpenRouterKey(key: string) {
 async function makeAPIRequest(
   messages: Message[],
   signal?: AbortSignal,
-  options: APIOptions = {},
-  apiKeyOverride?: string
+  options: APIOptions = {}
 ): Promise<Response> {
   const apiKeys = [
-    { key: apiKeyOverride, model: DEFAULT_MODEL, source: 'override' },
-    { key: OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'primary' },
-    { key: FALLBACK_OPENROUTER_API_KEY, model: FALLBACK_MODEL, source: 'fallback' },
-    { key: GEMINI_API_KEY, model: FALLBACK_MODEL, source: 'gemini' }
+    { key: OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'primary', models: FALLBACK_MODELS_OPENROUTER },
+    { key: FALLBACK_OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'fallback', models: FALLBACK_MODELS_OPENROUTER },
+    { key: GEMINI_API_KEY, model: FALLBACK_MODEL, source: 'gemini', models: FALLBACK_MODELS_GEMINI }
   ].filter(k => k.key && !k.key.includes('YOUR_'));
 
-  console.log("Available API Keys for makeAPIRequest:", apiKeys.map(k => ({ source: k.source, model: k.model, keyPresent: !!k.key })));
+  console.log("Available API Keys for makeAPIRequest:", apiKeys.map(k => ({ source: k.source, model: k.model, keyPresent: !!k.key, keyValue: k.key ? k.key.substring(0, 5) + '...' : 'undefined' })));
 
   if (apiKeys.length === 0) {
     throw new Error(
@@ -125,69 +133,72 @@ async function makeAPIRequest(
 
   let lastError: any = null;
 
-  for (const { key, model, source } of apiKeys) {
-    let currentModel = model;
-
-    if (source === 'primary') {
-      const freeModels = availableModels.filter(m => parseFloat(m.pricing.prompt) === 0 && parseFloat(m.pricing.completion) === 0);
-      if (!availableModels.find(m => m.id === DEFAULT_MODEL)) {
-        const preferredFreeModels = ['mistralai/mixtral-8x7b-instruct', 'deepseek-ai/deepseek-coder-6.7b-instruct'];
-        const foundFreeModel = preferredFreeModels.find(id => freeModels.some(m => m.id === id));
-        if (foundFreeModel) {
-          currentModel = foundFreeModel;
-        } else if (freeModels.length > 0) {
-          currentModel = freeModels[0].id;
-        } else {
-          currentModel = 'mistralai/mixtral-8x7b-instruct';
+  for (const { key, model, source, models } of apiKeys) {
+    for (const tryModel of models || [model]) {
+      let currentModel = tryModel;
+      console.log(`Trying model ${currentModel} with ${source} API key. Request headers include Authorization: Bearer [key snippet: ${key ? key.substring(0, 5) + '...' : 'undefined'}].`);
+      
+      if (source === 'primary' || source === 'fallback') {
+        const freeModels = availableModels.filter(m => parseFloat(m.pricing.prompt) === 0 && parseFloat(m.pricing.completion) === 0);
+        if (!availableModels.find(m => m.id === currentModel)) {
+          const foundFreeModel = FALLBACK_MODELS_OPENROUTER.find(id => freeModels.some(m => m.id === id));
+          if (foundFreeModel) {
+            currentModel = foundFreeModel;
+          } else if (freeModels.length > 0) {
+            currentModel = freeModels[0].id;
+          } else {
+            currentModel = FALLBACK_MODELS_OPENROUTER[0];
+          }
         }
       }
-    }
 
-    const requestBody: APIRequestBody = {
-      model: currentModel,
-      messages,
-      ...options
-    };
+      const requestBody: APIRequestBody = {
+        model: currentModel,
+        messages,
+        ...options
+      };
 
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`,
-          'HTTP-Referer': 'https://gaphyhive.com',
-          'X-Title': 'GaphyHive'
-        },
-        body: JSON.stringify(requestBody),
-        signal
-      });
-
-      if (response.ok) {
-        return response;
-      }
-
-      let errorMessage = `HTTP error! status: ${response.status}`;
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error?.message || errorMessage;
-      } catch {}
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`,
+            'HTTP-Referer': 'https://gaphyhive.com',
+            'X-Title': 'GaphyHive'
+          },
+          body: JSON.stringify(requestBody),
+          signal
+        });
 
-      lastError = new Error(errorMessage);
+        if (response.ok) {
+          console.log(`Successfully connected with model ${currentModel} using ${source} API key.`);
+          return response;
+        }
 
-      if (response.status !== 429 && response.status !== 402 && !errorMessage.toLowerCase().includes('provider')) {
-        throw lastError;
+        let errorMessage = `HTTP error with model ${currentModel} using ${source} API key! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error?.message || errorMessage;
+        } catch {}
+
+        lastError = new Error(errorMessage);
+        console.error(errorMessage);
+
+        if (response.status !== 429 && response.status !== 402 && !errorMessage.toLowerCase().includes('provider')) {
+          throw lastError;
+        }
+        // If it's a retryable error, the loop will continue to the next model or key.
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          throw error;
+        }
+        lastError = error;
       }
-      // If it's a retryable error, the loop will continue to the next key.
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        throw error;
-      }
-      lastError = error;
     }
   }
 
-  throw new Error(`Failed to connect to AI service after trying all fallbacks: ${lastError?.message || 'Unknown error'}`);
+  throw new Error(`Failed to connect to AI service after trying all fallbacks: ${lastError?.message || 'Unknown error'}. Please verify that your API keys are correct and active with OpenRouter. Check your OpenRouter account for any restrictions or contact support for assistance.`);
 }
 
 export async function chatWithAI(
@@ -311,6 +322,47 @@ Return format (JSON):
   }
   // Return null instead of throwing so the chat can continue
   return null;
+}
+
+/**
+ * Classifies the intent of a user prompt to determine if it's about user's own content, admin full data, or something else.
+ * @param prompt The user input to classify.
+ * @returns Promise<string> The classified intent: 'user_content', 'admin_data', or 'other'.
+ */
+export async function classifyIntent(prompt: string): Promise<string> {
+  const messages: Message[] = [
+    {
+      role: 'system',
+      content: `You are an intent classification assistant. Your task is to analyze user prompts and classify them into one of three categories:
+- 'user_content': If the user is asking about their own trade ideas or personal content (e.g., "my trade ideas", "show me my trades").
+- 'admin_data': If the user is requesting access to all trade ideas or full app content, typically for admin purposes (e.g., "all trade ideas", "show me everything", "app content").
+- 'other': If the prompt does not fit into the above categories or is unrelated to fetching data.
+
+Respond with only one of these labels: 'user_content', 'admin_data', or 'other'. Do not provide explanations or additional text.`
+    },
+    {
+      role: 'user',
+      content: `Classify: "${prompt}"`
+    }
+  ];
+
+  const response = await makeAPIRequest(messages, undefined, {
+    stream: false,
+    temperature: 0.0,
+    max_tokens: 10
+  });
+
+  const data = await response.json();
+  if (!data.choices?.[0]?.message?.content) {
+    console.error('Unexpected API response format:', data);
+    return 'other';
+  }
+
+  const result = data.choices[0].message.content.trim();
+  if (result === 'user_content' || result === 'admin_data') {
+    return result;
+  }
+  return 'other';
 }
 
 /**

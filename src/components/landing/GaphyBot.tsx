@@ -16,6 +16,7 @@ import type { TradeIdea } from '@/types';
 import { Card } from '@/components/ui/card';
 import { useMediaQuery } from 'react-responsive';
 import { useProfile } from '@/hooks/useProfile';
+import { fetchDataForAI, summarizeTradeIdeas } from '@/lib/supabaseDataFetch';
 
 type Message = {
   sender: 'user' | 'bot';
@@ -28,9 +29,13 @@ type GaphyBotProps = {
   onClose: () => void;
 };
 
-const initialMessage: Message = { 
-  sender: 'bot', 
-  text: "Hi! I'm AlphaFinder, your AI assistant. I can help with trading analysis or just have a normal conversation. What would you like to talk about?" 
+const getInitialMessage = (username: string | undefined, isAdmin: boolean): Message => {
+  const greeting = username ? `Hi ${username}!` : "Hi!";
+  const roleText = isAdmin ? "As an admin, I can provide access to all trade ideas and app data." : "I can help with trading analysis or access to your trade ideas.";
+  return { 
+    sender: 'bot', 
+    text: `${greeting} I'm AlphaFinder, your AI assistant. ${roleText} What would you like to talk about?`
+  };
 };
 
 // Smart system prompt creation based on user intent
@@ -62,24 +67,23 @@ const createSystemPrompt = (userMessage: string, profile: any, contextObj: any) 
 
   if (profile?.is_admin && (isDataRequest || hasOtherData)) {
     // Admin asking for data or data is available
+    const tradeIdeasSummary = hasTradeIdeas ? summarizeTradeIdeas(contextObj.tradeIdeas) : 'No trade ideas available.';
+    const serversSummary = contextObj.servers?.length > 0 ? `Servers: ${contextObj.servers.length} available.` : 'No servers available.';
+    const usersSummary = contextObj.users?.length > 0 ? `Users: ${contextObj.users.length} available.` : 'No users available.';
+    const adsSummary = contextObj.ads?.length > 0 ? `Ads: ${contextObj.ads.length} available.` : 'No ads available.';
+    const affiliateLinksSummary = contextObj.affiliateLinks?.length > 0 ? `Affiliate Links: ${contextObj.affiliateLinks.length} available.` : 'No affiliate links available.';
+
     return `You are AlphaFinder, the AI assistant for Gaphy Trade Hive.
 
 You have access to the following data from the Gaphy Trade Hive platform:
 
 TRADE IDEAS (${contextObj.tradeIdeas?.length || 0} available):
-${JSON.stringify(contextObj.tradeIdeas || [], null, 2)}
+${tradeIdeasSummary}
 
-SERVERS (${contextObj.servers?.length || 0} available):
-${JSON.stringify(contextObj.servers || [], null, 2)}
-
-USERS (${contextObj.users?.length || 0} available):
-${JSON.stringify(contextObj.users || [], null, 2)}
-
-ADS (${contextObj.ads?.length || 0} available):
-${JSON.stringify(contextObj.ads || [], null, 2)}
-
-AFFILIATE LINKS (${contextObj.affiliateLinks?.length || 0} available):
-${JSON.stringify(contextObj.affiliateLinks || [], null, 2)}
+${serversSummary}
+${usersSummary}
+${adsSummary}
+${affiliateLinksSummary}
 
 INSTRUCTIONS:
 - Use this data to answer questions about the platform
@@ -91,10 +95,11 @@ INSTRUCTIONS:
 
   if (isTradingRequest || hasTradeIdeas) {
     // User asking about trading or we have trade data
+    const tradeIdeasSummary = hasTradeIdeas ? summarizeTradeIdeas(contextObj.tradeIdeas) : 'No trade ideas available.';
     return `You are AlphaFinder, a trading assistant for Gaphy Trade Hive. 
 
 You have access to these trade ideas from the platform:
-${JSON.stringify(contextObj.tradeIdeas || [], null, 2)}
+${tradeIdeasSummary}
 
 INSTRUCTIONS:
 - Help analyze these trade ideas when asked
@@ -128,20 +133,22 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   const { toast } = useToast();
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
-  // Initialize messages
+  // Initialize messages based on user profile
   useEffect(() => {
     try {
       const storedMessages = localStorage.getItem('gaphybot-messages');
       if (storedMessages) {
         setMessages(JSON.parse(storedMessages));
+      } else if (profile) {
+        setMessages([getInitialMessage(profile.username, profile.is_admin || false)]);
       } else {
-        setMessages([initialMessage]);
+        setMessages([getInitialMessage(undefined, false)]);
       }
     } catch (error) {
       console.error("Failed to parse messages from localStorage", error);
-      setMessages([initialMessage]);
+      setMessages([getInitialMessage(undefined, false)]);
     }
-  }, []);
+  }, [profile]);
 
   // Save messages and auto-scroll
   useEffect(() => {
@@ -181,51 +188,32 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
     setInput('');
     setIsBotThinking(true);
 
-    // Fetch context data only when needed
+    // Classify intent and handle data fetching directly for specific data requests
     let contextObj: any = {};
-    
-    // Always fetch context for better responses - we'll let the AI decide what to use
+    let botResponse: string | null = null;
     try {
-      if (profile?.is_admin) {
-        // Admin: fetch all app data with error handling
-        const [tradeIdeasRes, serversRes, usersRes, adsRes, affRes] = await Promise.all([
-          supabase.from('trade_ideas')
-            .select('id, title, instrument, breakdown, image_url, tags, user_id, likes')
-            .order('created_at', { ascending: false })
-            .limit(50),
-          supabase.from('servers')
-            .select('id, name, description, image_url, owner_id, created_at, is_public')
-            .order('created_at', { ascending: false })
-            .limit(50),
-          supabase.from('profiles')
-            .select('id, username, avatar_url, is_admin')
-            .limit(100),
-          supabase.from('ads')
-            .select('id, title, content, link_url, media_url, media_type, status, start_date, end_date, cost')
-            .limit(50),
-          supabase.from('affiliate_links')
-            .select('id, title, url')
-            .limit(50)
-        ]);
-
-        // Check for errors in any response
-        const errors = [tradeIdeasRes.error, serversRes.error, usersRes.error, adsRes.error, affRes.error].filter(Boolean);
-        if (errors.length > 0) {
-          console.error('Supabase query errors:', errors);
-          throw new Error('Failed to fetch some data');
+      if (user) {
+        const isAdmin = profile?.is_admin || false;
+        const fetchedData = await fetchDataForAI(userInput, user.id, isAdmin);
+        if (fetchedData.type === 'user_trade_ideas') {
+          // Directly handle user trade ideas display to provide specific details
+          const summary = summarizeTradeIdeas(fetchedData.data);
+          botResponse = `Here are your trade ideas:\n\n${summary}\n\nIs there a specific trade idea you'd like more details on?`;
+          setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
+          setIsBotThinking(false);
+          return; // Exit early, no need to send to AI
+        } else if (fetchedData.type === 'all_trade_ideas') {
+          // Directly handle admin data display to avoid token overload
+          const summary = summarizeTradeIdeas(fetchedData.data);
+          botResponse = `Here are the trade ideas I found for admin access:\n\n${summary}\n\nIs there anything specific you'd like to know about these trade ideas or other app data?`;
+          setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
+          setIsBotThinking(false);
+          return; // Exit early, no need to send to AI
+        } else {
+          contextObj = { tradeIdeas: [] };
         }
-        
-        contextObj = {
-          tradeIdeas: tradeIdeasRes.data || [],
-          servers: serversRes.data || [],
-          users: usersRes.data || [],
-          ads: adsRes.data || [],
-          affiliateLinks: affRes.data || []
-        };
       } else {
-        // Non-admin: only trade ideas if needed
-        const tradeIdeasRes = await supabase.from('trade_ideas').select('id, title, instrument, breakdown, image_url, tags, user_id, likes').order('created_at', { ascending: false }).limit(20);
-        contextObj = { tradeIdeas: tradeIdeasRes.data || [] };
+        contextObj = { tradeIdeas: [] };
       }
     } catch (err) {
       console.error('Error fetching context:', err);
@@ -259,24 +247,36 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
         }))
       ];
 
+      let streamedContent = '';
       try {
         const stream = await chatWithAI(chatMessages, abortController.current.signal);
         const parsedStream = await parseStream(stream);
         const reader = parsedStream.getReader();
-        let streamedContent = '';
+        const timeoutMs = 30000; // 30 seconds timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+        });
 
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          streamedContent += value;
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage.sender === 'bot') {
-              return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent }];
+          try {
+            const readPromise = reader.read();
+            const result = await Promise.race([readPromise, timeoutPromise]);
+            if (result.done) break;
+            streamedContent += result.value;
+            setMessages(prev => {
+              const lastMessage = prev[prev.length - 1];
+              if (lastMessage.sender === 'bot') {
+                return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent }];
+              }
+              return prev;
+            });
+            await new Promise(res => setTimeout(res, 40));
+          } catch (error: any) {
+            if (error.message === 'Request timed out') {
+              throw error;
             }
-            return prev;
-          });
-          await new Promise(res => setTimeout(res, 40));
+            break; // Handle other read errors by breaking the loop
+          }
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -288,12 +288,26 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
             }
             return prev;
           });
+        } else if (error.message === 'Request timed out') {
+          console.error('AI request timed out:', error);
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.sender === 'bot') {
+              return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent + '\n\n*(Response timed out. Please try again.)*' }];
+            }
+            return prev;
+          });
+          toast({
+            title: 'AI Timeout',
+            description: 'The AI took too long to respond. Please try again.',
+            variant: 'destructive',
+          });
         } else {
           console.error('Error streaming message:', error);
           setMessages(prev => {
             const lastMessage = prev[prev.length - 1];
             if (lastMessage.sender === 'bot') {
-              return [...prev.slice(0, -1), { ...lastMessage, text: lastMessage.text + '\n\n*(Error receiving response)*' }];
+              return [...prev.slice(0, -1), { ...lastMessage, text: streamedContent + '\n\n*(Error receiving response)*' }];
             }
             return prev;
           });
@@ -352,7 +366,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   };
 
   const handleClearChat = () => {
-    setMessages([initialMessage]);
+    setMessages([getInitialMessage(profile?.username, profile?.is_admin || false)]);
     localStorage.removeItem('gaphybot-messages');
   };
 
