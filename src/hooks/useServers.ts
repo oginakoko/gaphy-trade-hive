@@ -26,12 +26,12 @@ const fetchPublicServers = async (): Promise<Server[]> => {
 const fetchUserServers = async (userId: string): Promise<Server[]> => {
   // Fetch all servers where user is a member (both public and private)
   const { data: memberData, error: memberError } = await supabase
-    .from('server_members')
+    .from('server_members_base')
     .select(`
       servers(
         *,
         profiles!owner_id(username, avatar_url),
-        server_members(count)
+        server_members_base(count)
       )
     `)
     .eq('user_id', userId);
@@ -39,14 +39,14 @@ const fetchUserServers = async (userId: string): Promise<Server[]> => {
   if (memberError) throw memberError;
   if (!memberData) return [];
 
-  // memberData is an array of { servers: { ...server fields..., server_members: [...] } }
+  // memberData is an array of { servers: { ...server fields..., server_members_base: [...] } }
   const serversWithCount: Server[] = memberData
     .map((item: any) => {
       if (!item.servers) return null;
-      const { server_members, ...server } = item.servers;
+      const { server_members_base, ...server } = item.servers;
       return {
         ...server,
-        member_count: Array.isArray(server_members) && server_members[0]?.count ? server_members[0].count : 0
+        member_count: Array.isArray(server_members_base) && server_members_base[0]?.count ? server_members_base[0].count : 0
       };
     })
     .filter(Boolean);
@@ -139,7 +139,7 @@ const createServer = async (serverData: {
 
 const joinServer = async (serverId: string, userId: string) => {
   const { error } = await supabase
-    .from('server_members')
+    .from('server_members_base')
     .insert({
       server_id: serverId,
       user_id: userId,
@@ -163,7 +163,7 @@ const leaveServer = async ({ serverId, userId }: { serverId: string; userId: str
   }
 
   const { error } = await supabase
-    .from('server_members')
+    .from('server_members_base')
     .delete()
     .eq('server_id', serverId)
     .eq('user_id', userId);

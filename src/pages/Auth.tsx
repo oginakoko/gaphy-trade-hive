@@ -2,20 +2,22 @@
 import { Auth as SupabaseAuth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 const Auth = () => {
     const navigate = useNavigate();
-    const { session } = useAuth();
+    const [searchParams] = useSearchParams();
+    const { session, loading } = useAuth();
 
     useEffect(() => {
-        if (session) {
-            navigate('/analysis');
+        if (!loading && session) {
+            const redirectUrl = searchParams.get('redirect') || '/analysis';
+            navigate(redirectUrl);
         }
-    }, [session, navigate]);
+    }, [session, loading, navigate, searchParams]);
 
     return (
         <>

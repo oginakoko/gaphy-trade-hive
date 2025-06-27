@@ -22,7 +22,7 @@ const ServerCard = ({ server, onJoin, onEnter, isJoining, isMember }: ServerCard
   const handleShareServer = async (e: React.MouseEvent, serverId: string, serverName: string) => {
     e.stopPropagation();
     try {
-      const longUrl = `${window.location.origin}/servers/${serverId}`;
+      const longUrl = `${window.location.origin}/servers/invite/${serverId}`;
       
       // Generate shortlink
       const shortCode = await createShortlink.mutateAsync({

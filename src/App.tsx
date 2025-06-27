@@ -28,6 +28,7 @@ import CreateTradeIdea from "./pages/CreateTradeIdea";
 import EditTradeIdea from "./pages/EditTradeIdea";
 import Support from "./pages/Support";
 import AdminMessages from "./pages/admin/messages";
+import ServerInvite from "./pages/ServerInvite";
 import { HelmetProvider } from 'react-helmet-async';
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
                   <Route path="/create-ad" element={<CreateAd />} />
                   <Route path="/support" element={<Support />} />
                 </Route>
+                <Route path="/servers/invite/:serverId" element={<ServerInvite />} />
 
                 {/* Admin-only routes */}
                 <Route element={<ProtectedRoute />}>
