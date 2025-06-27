@@ -1,26 +1,12 @@
 import { parseStream } from './messageParser';
+import { makeOpenRouterRequest } from './openrouterProvider';
+import { makeGeminiRequest } from './geminiProvider';
+import { makeGroqRequest } from './groqProvider';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
-
-const OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_API_KEY || '') as string;
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const API_MODELS_URL = 'https://openrouter.ai/api/v1/models';
-
-// R1 is one of the most powerful open source models that has a free tier
-const DEFAULT_MODEL = 'meta-llama/llama-4-maverick:free';
-const FALLBACK_MODELS_OPENROUTER = [
-  'meta-llama/llama-4-maverick:free',
-  'meta-llama/llama-4-scout:free',
-  'openchat/openchat-3.5:free'
-];
-const FALLBACK_MODELS_GEMINI = [
-  'google/gemini-pro',
-  'google/gemini-2.5-flash',
-  'google/gemini-2.5-flash-lite'
-];
 
 export interface TradeData {
   asset: string;
@@ -34,183 +20,58 @@ export interface TradeData {
   status: 'open' | 'closed' | 'cancelled';
 }
 
-interface OpenRouterModel {
-  id: string;
-  name: string;
-  description: string;
-  context_length: number;
-  pricing: {
-    prompt: string;
-    completion: string;
-  };
-}
-
-interface APIRequestBody {
-  model: string;
-  messages: Message[];
-  temperature?: number;
-  stream?: boolean;
-  max_tokens?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  top_p?: number;
-  top_k?: number;
-}
-
 interface APIOptions {
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
 }
 
-let availableModels: OpenRouterModel[] = [];
-
-async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
-  if (!OPENROUTER_API_KEY) {
-    console.warn('OpenRouter API key is not configured. Cannot fetch available models.');
-    return [];
-  }
-
-  try {
-    const response = await fetch(API_MODELS_URL, {
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://gaphyhive.com',
-        'X-Title': 'GaphyHive'
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`HTTP error fetching models! status: ${response.status}`);
-      return [];
-    }
-
-    const data = await response.json();
-    availableModels = data.data || [];
-    return availableModels;
-  } catch (error) {
-    console.error('Failed to fetch available models:', error);
-    return [];
-  }
-}
-
-// Initialize models list
-fetchAvailableModels().catch(console.error);
-
-const FALLBACK_OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || '') as string;
-const GEMINI_API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || '') as string;
-const FALLBACK_MODEL = 'google/gemini-pro'; // Default Gemini model
-
-export function setFallbackOpenRouterKey(key: string) {
-  // This function might not be needed if keys are always from env
-  // but keeping it for now if there's external logic that uses it.
-  // For now, it won't directly affect the const above.
-  console.warn('setFallbackOpenRouterKey called, but API keys are now loaded directly from environment variables.');
-}
-
 async function makeAPIRequest(
   messages: Message[],
   signal?: AbortSignal,
-  options: APIOptions = {}
+  options: APIOptions = {},
+  providerName: string = 'OpenRouter'
 ): Promise<Response> {
-  const apiKeys = [
-    { key: OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'primary', models: FALLBACK_MODELS_OPENROUTER },
-    { key: FALLBACK_OPENROUTER_API_KEY, model: DEFAULT_MODEL, source: 'fallback', models: FALLBACK_MODELS_OPENROUTER },
-    { key: GEMINI_API_KEY, model: FALLBACK_MODEL, source: 'gemini', models: FALLBACK_MODELS_GEMINI }
-  ].filter(k => k.key && !k.key.includes('YOUR_'));
-
-  console.log("Available API Keys for makeAPIRequest:", apiKeys.map(k => ({ source: k.source, model: k.model, keyPresent: !!k.key, keyValue: k.key ? k.key.substring(0, 5) + '...' : 'undefined' })));
-
-  if (apiKeys.length === 0) {
-    throw new Error(
-      'AI service API key is not configured. Please set your API keys in the .env file.'
-    );
-  }
-
   if (!messages.length || !messages.every(m => m.role && m.content)) {
     throw new Error('Invalid message format.');
   }
 
-  let lastError: any = null;
+  const providers = [
+    { name: 'OpenRouter', request: makeOpenRouterRequest },
+    { name: 'Gemini', request: makeGeminiRequest },
+    { name: 'Groq', request: makeGroqRequest }
+  ];
 
-  for (const { key, model, source, models } of apiKeys) {
-    for (const tryModel of models || [model]) {
-      let currentModel = tryModel;
-      console.log(`Trying model ${currentModel} with ${source} API key. Request headers include Authorization: Bearer [key snippet: ${key ? key.substring(0, 5) + '...' : 'undefined'}].`);
-      
-      if (source === 'primary' || source === 'fallback') {
-        const freeModels = availableModels.filter(m => parseFloat(m.pricing.prompt) === 0 && parseFloat(m.pricing.completion) === 0);
-        if (!availableModels.find(m => m.id === currentModel)) {
-          const foundFreeModel = FALLBACK_MODELS_OPENROUTER.find(id => freeModels.some(m => m.id === id));
-          if (foundFreeModel) {
-            currentModel = foundFreeModel;
-          } else if (freeModels.length > 0) {
-            currentModel = freeModels[0].id;
-          } else {
-            currentModel = FALLBACK_MODELS_OPENROUTER[0];
-          }
-        }
-      }
-
-      const requestBody: APIRequestBody = {
-        model: currentModel,
-        messages,
-        ...options
-      };
-
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-            'HTTP-Referer': 'https://gaphyhive.com',
-            'X-Title': 'GaphyHive'
-          },
-          body: JSON.stringify(requestBody),
-          signal
-        });
-
-        if (response.ok) {
-          console.log(`Successfully connected with model ${currentModel} using ${source} API key.`);
-          return response;
-        }
-
-        let errorMessage = `HTTP error with model ${currentModel} using ${source} API key! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error?.message || errorMessage;
-        } catch {}
-
-        lastError = new Error(errorMessage);
-        console.error(errorMessage);
-
-        if (response.status !== 429 && response.status !== 402 && !errorMessage.toLowerCase().includes('provider')) {
-          throw lastError;
-        }
-        // If it's a retryable error, the loop will continue to the next model or key.
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          throw error;
-        }
-        lastError = error;
-      }
-    }
+  const selectedProvider = providers.find(p => p.name === providerName);
+  if (!selectedProvider) {
+    throw new Error(`Invalid provider name: ${providerName}`);
   }
 
-  throw new Error(`Failed to connect to AI service after trying all fallbacks: ${lastError?.message || 'Unknown error'}. Please verify that your API keys are correct and active with OpenRouter. Check your OpenRouter account for any restrictions or contact support for assistance.`);
+  try {
+    console.log(`Attempting to connect with ${selectedProvider.name} provider as per user selection.`);
+    const response = await selectedProvider.request(messages, signal, options);
+    if (response.ok) {
+      console.log(`Successfully connected with ${selectedProvider.name} provider.`);
+      return response;
+    }
+    throw new Error(`Failed with ${selectedProvider.name} provider: ${response.status}`);
+  } catch (error: any) {
+    console.error(`Error with ${selectedProvider.name} provider:`, error.message);
+    throw error;
+  }
 }
 
 export async function chatWithAI(
   messages: Message[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  providerName: string = 'OpenRouter'
 ): Promise<ReadableStream<Uint8Array>> {
   const validMessages = messages.filter(m => m.content?.trim());
   const response = await makeAPIRequest(validMessages, signal, {
     stream: true,
     temperature: 0.7,
     max_tokens: 4000
-  });
+  }, providerName);
 
   if (!response.body) {
     throw new Error('Response body is null');
@@ -219,7 +80,7 @@ export async function chatWithAI(
   return response.body;
 }
 
-export async function analyzeTradeIdea(content: string): Promise<TradeData | null> {
+export async function analyzeTradeIdea(content: string, providerName: string = 'OpenRouter'): Promise<TradeData | null> {
   const messages: Message[] = [
     {
       role: 'system',
@@ -257,7 +118,7 @@ Return format (JSON):
     stream: false,
     temperature: 0.3,
     max_tokens: 500
-  });
+  }, providerName);
 
   const data = await response.json();
   if (!data.choices?.[0]?.message?.content) {
@@ -303,7 +164,7 @@ Return format (JSON):
         const reward = Math.abs(parsedData.target_price - parsedData.entry_price);
 
         if (risk === 0) {
-           parsedData.risk_reward = null; // Avoid division by zero
+          parsedData.risk_reward = null; // Avoid division by zero
         } else {
           parsedData.risk_reward = direction === 'long' ?
             reward / risk :
@@ -329,7 +190,7 @@ Return format (JSON):
  * @param prompt The user input to classify.
  * @returns Promise<string> The classified intent: 'user_content', 'admin_data', or 'other'.
  */
-export async function classifyIntent(prompt: string): Promise<string> {
+export async function classifyIntent(prompt: string, providerName: string = 'OpenRouter'): Promise<string> {
   const messages: Message[] = [
     {
       role: 'system',
@@ -350,7 +211,7 @@ Respond with only one of these labels: 'user_content', 'admin_data', or 'other'.
     stream: false,
     temperature: 0.0,
     max_tokens: 10
-  });
+  }, providerName);
 
   const data = await response.json();
   if (!data.choices?.[0]?.message?.content) {
@@ -397,7 +258,6 @@ export async function decodeAIStreamToString(stream: ReadableStream<Uint8Array>)
       }
     }
   }
-  // Flush any remaining bytes (incomplete line)
   // Flush any remaining bytes (incomplete line)
   if (buffer.trim().startsWith('data:')) {
     const jsonStr = buffer.trim().replace(/^data:/, '').trim();

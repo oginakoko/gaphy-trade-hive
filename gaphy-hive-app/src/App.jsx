@@ -1,38 +1,35 @@
-import { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import '../landing.css';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Brain, Users, GraduationCap, TrendingUp, BarChart3, Shield, Globe } from 'lucide-react';
-import Header from '@/components/layout/Header';
-import TradeTicker from '@/components/landing/TradeTicker';
-import GaphyBot from '@/components/landing/GaphyBot';
+import { useState, useEffect } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
+import { Button } from './components/ui/button'
+import { Card, CardContent } from './components/ui/card'
+import { Brain, Users, GraduationCap, TrendingUp, BarChart3, Zap, Shield, Globe } from 'lucide-react'
+import './App.css'
 
 // Import images
-import heroBackground from '../../assets/images/hero-background.png';
-import aiBrainIcon from '../../assets/images/ai-brain-icon.png';
-import communityIcon from '../../assets/images/community-icon.png';
-import educationIcon from '../../assets/images/education-icon.png';
-import tradingDashboard1 from '../../assets/images/trading-dashboard-1.jpg';
-import tradingDashboard2 from '../../assets/images/trading-dashboard-2.jpg';
+import heroBackground from './assets/images/hero-background.png'
+import aiBrainIcon from './assets/images/ai-brain-icon.png'
+import communityIcon from './assets/images/community-icon.png'
+import educationIcon from './assets/images/education-icon.png'
+import tradingDashboard1 from './assets/images/trading-dashboard-1.jpg'
+import tradingDashboard2 from './assets/images/trading-dashboard-2.jpg'
 
 // Animated Counter Component
 const AnimatedCounter = ({ end, duration = 2 }) => {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0)
   
   useEffect(() => {
-    let startTime;
+    let startTime
     const animate = (currentTime) => {
-      if (!startTime) startTime = currentTime;
-      const progress = Math.min((currentTime - startTime) / (duration * 1000), 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [end, duration]);
+      if (!startTime) startTime = currentTime
+      const progress = Math.min((currentTime - startTime) / (duration * 1000), 1)
+      setCount(Math.floor(progress * end))
+      if (progress < 1) requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+  }, [end, duration])
   
-  return <span>{count.toLocaleString()}</span>;
-};
+  return <span>{count.toLocaleString()}</span>
+}
 
 // Floating Particles Component
 const FloatingParticles = () => {
@@ -59,15 +56,59 @@ const FloatingParticles = () => {
         top: `${Math.random() * 100}%`
       }}
     />
-  ));
+  ))
   
-  return <div className="particles">{particles}</div>;
-};
+  return <div className="particles">{particles}</div>
+}
+
+// Navigation Component
+const Navigation = () => {
+  const [isScrolled, setIsScrolled] = useState(false)
+  
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+  
+  return (
+    <motion.nav 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'glass backdrop-blur-md' : ''
+      }`}
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="container mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <motion.div 
+            className="text-2xl font-bold gradient-text"
+            whileHover={{ scale: 1.05 }}
+          >
+            GaphyHive
+          </motion.div>
+          
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">Features</a>
+            <a href="#how-it-works" className="text-muted-foreground hover:text-primary transition-colors">How It Works</a>
+            <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">Pricing</a>
+            <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">About</a>
+          </div>
+          
+          <Button className="btn-primary text-primary-foreground">
+            Get Started
+          </Button>
+        </div>
+      </div>
+    </motion.nav>
+  )
+}
 
 // Hero Section Component
 const HeroSection = () => {
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 500], [0, 150]);
+  const { scrollY } = useScroll()
+  const y = useTransform(scrollY, [0, 500], [0, 150])
   
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -121,8 +162,8 @@ const HeroSection = () => {
         </motion.div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // Trust Indicators Component
 const TrustIndicators = () => {
@@ -163,8 +204,8 @@ const TrustIndicators = () => {
         </motion.div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // Features Section Component
 const FeaturesSection = () => {
@@ -187,7 +228,7 @@ const FeaturesSection = () => {
       description: "Access comprehensive trading courses, market analysis tutorials, and expert-led webinars.",
       color: "text-accent"
     }
-  ];
+  ]
   
   return (
     <section id="features" className="py-20">
@@ -236,8 +277,8 @@ const FeaturesSection = () => {
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // How It Works Section Component
 const HowItWorksSection = () => {
@@ -260,7 +301,7 @@ const HowItWorksSection = () => {
       description: "Execute trades with confidence and learn from our community of expert traders and educational resources.",
       icon: <TrendingUp className="w-8 h-8" />
     }
-  ];
+  ]
   
   return (
     <section id="how-it-works" className="py-20 bg-card/20">
@@ -313,8 +354,8 @@ const HowItWorksSection = () => {
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // Testimonials Section Component
 const TestimonialsSection = () => {
@@ -337,7 +378,7 @@ const TestimonialsSection = () => {
       content: "The educational content is top-notch. I went from beginner to profitable trader in just 6 months.",
       avatar: "EW"
     }
-  ];
+  ]
   
   return (
     <section className="py-20">
@@ -387,8 +428,8 @@ const TestimonialsSection = () => {
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // CTA Section Component
 const CTASection = () => {
@@ -418,8 +459,8 @@ const CTASection = () => {
         </motion.div>
       </div>
     </section>
-  );
-};
+  )
+}
 
 // Footer Component
 const Footer = () => {
@@ -459,52 +500,28 @@ const Footer = () => {
           </div>
         </div>
         <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} GaphyHive. All rights reserved.</p>
+          <p>&copy; 2024 GaphyHive. All rights reserved.</p>
         </div>
       </div>
     </footer>
-  );
-};
+  )
+}
 
-// Main Index Component
-const Index = () => {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
+// Main App Component
+function App() {
   return (
-    <div className="relative overflow-hidden">
-      <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_center,_rgba(0,255,163,0.1)_0,_rgba(0,255,163,0)_50%)] -z-10" />
-      <Header />
-      <main>
-        <HeroSection />
-        <TrustIndicators />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <TestimonialsSection />
-        <CTASection />
-        <TradeTicker />
-      </main>
+    <div className="min-h-screen">
+      <Navigation />
+      <HeroSection />
+      <TrustIndicators />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <TestimonialsSection />
+      <CTASection />
       <Footer />
-
-      {/* Floating Chat Components */}
-      <div className="fixed bottom-6 right-6 z-50">
-        {!isChatOpen && (
-          <Button
-            size="icon"
-            className="rounded-full h-16 w-16 bg-brand-green text-black hover:bg-brand-green/80 shadow-lg transform transition-transform hover:scale-110 animate-fade-in-up"
-            onClick={() => setIsChatOpen(true)}
-          >
-            <Brain className="h-8 w-8" />
-          </Button>
-        )}
-      </div>
-
-      {isChatOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <GaphyBot onClose={() => setIsChatOpen(false)} />
-        </div>
-      )}
     </div>
-  );
-};
+  )
+}
 
-export default Index;
+export default App
+

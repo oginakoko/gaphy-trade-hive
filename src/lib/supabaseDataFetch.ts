@@ -10,7 +10,9 @@ import { TradeIdea } from '@/types';
  * @returns Promise<any> The fetched data based on intent and permissions.
  */
 export async function fetchDataForAI(prompt: string, userId: string, isAdmin: boolean): Promise<any> {
-  const intent = await classifyIntent(prompt);
+  const provider = localStorage.getItem('selectedAIProvider') || 'OpenRouter';
+  console.log(`Using AI provider: ${provider} for intent classification`);
+  const intent = await classifyIntent(prompt, provider);
   console.log(`Classified intent: ${intent}`);
 
   if (intent === 'user_content') {

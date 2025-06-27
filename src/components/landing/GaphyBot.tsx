@@ -17,6 +17,8 @@ import { Card } from '@/components/ui/card';
 import { useMediaQuery } from 'react-responsive';
 import { useProfile } from '@/hooks/useProfile';
 import { fetchDataForAI, summarizeTradeIdeas } from '@/lib/supabaseDataFetch';
+import { getUserCount } from '@/lib/supabaseDataLanding';
+import { AIProviderSelector } from '@/components/shared/AIProviderSelector';
 
 type Message = {
   sender: 'user' | 'bot';
@@ -124,6 +126,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   const [input, setInput] = useState('');
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>('OpenRouter');
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const scrollViewport = useRef<HTMLDivElement>(null);
@@ -133,7 +136,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
   const { toast } = useToast();
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
-  // Initialize messages based on user profile
+  // Initialize messages and provider based on user profile and local storage
   useEffect(() => {
     try {
       const storedMessages = localStorage.getItem('gaphybot-messages');
@@ -144,8 +147,12 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
       } else {
         setMessages([getInitialMessage(undefined, false)]);
       }
+      const storedProvider = localStorage.getItem('selectedAIProvider');
+      if (storedProvider) {
+        setSelectedProvider(storedProvider);
+      }
     } catch (error) {
-      console.error("Failed to parse messages from localStorage", error);
+      console.error("Failed to parse data from localStorage", error);
       setMessages([getInitialMessage(undefined, false)]);
     }
   }, [profile]);
@@ -202,15 +209,21 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
           setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
           setIsBotThinking(false);
           return; // Exit early, no need to send to AI
-        } else if (fetchedData.type === 'all_trade_ideas') {
-          // Directly handle admin data display to avoid token overload
-          const summary = summarizeTradeIdeas(fetchedData.data);
-          botResponse = `Here are the trade ideas I found for admin access:\n\n${summary}\n\nIs there anything specific you'd like to know about these trade ideas or other app data?`;
-          setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
-          setIsBotThinking(false);
-          return; // Exit early, no need to send to AI
-        } else {
-          contextObj = { tradeIdeas: [] };
+    } else if (fetchedData.type === 'all_trade_ideas') {
+      // Directly handle admin data display to avoid token overload
+      const summary = summarizeTradeIdeas(fetchedData.data);
+      try {
+        const userCount = await getUserCount();
+        botResponse = `Here are the trade ideas I found for admin access:\n\n${summary}\n\nCurrent number of users in the app: ${userCount}\n\nIs there anything specific you'd like to know about these trade ideas or other app data?`;
+      } catch (error) {
+        console.error('Error fetching user count:', error);
+        botResponse = `Here are the trade ideas I found for admin access:\n\n${summary}\n\nI couldn't fetch the current number of users due to an error.\n\nIs there anything specific you'd like to know about these trade ideas or other app data?`;
+      }
+      setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
+      setIsBotThinking(false);
+      return; // Exit early, no need to send to AI
+    } else {
+      contextObj = { tradeIdeas: [] };
         }
       } else {
         contextObj = { tradeIdeas: [] };
@@ -249,7 +262,7 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
 
       let streamedContent = '';
       try {
-        const stream = await chatWithAI(chatMessages, abortController.current.signal);
+        const stream = await chatWithAI(chatMessages, abortController.current.signal, selectedProvider);
         const parsedStream = await parseStream(stream);
         const reader = parsedStream.getReader();
         const timeoutMs = 30000; // 30 seconds timeout
@@ -394,12 +407,13 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
           : 'w-full max-w-md sm:max-w-lg h-[80vh] flex flex-col shadow-2xl rounded-2xl border border-gray-700 bg-gray-900'
       )}>
         <Card className="flex-1 flex flex-col bg-gray-900 border border-gray-700 shadow-lg rounded-none sm:rounded-2xl">
-          <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between p-4 border-b border-gray-700 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Bot className="h-6 w-6 text-brand-green" />
               <span className="font-bold text-lg text-white">AlphaFinder AI</span>
             </div>
             <div className="flex items-center gap-2">
+              <AIProviderSelector onProviderChange={setSelectedProvider} />
               {!isMobile && messages.length > 0 && (
                 <Button
                   variant="ghost"
@@ -478,9 +492,19 @@ const GaphyBot = ({ onClose }: GaphyBotProps) => {
               className="flex-1 bg-gray-800 border-gray-700 text-white placeholder-gray-400 min-w-0"
               disabled={isBotThinking || isUploading}
             />
-            <Button type="submit" disabled={!input.trim() || isBotThinking || isUploading} className="bg-brand-green hover:bg-brand-green/90">
-              <Send className="h-5 w-5" />
-            </Button>
+            {isBotThinking ? (
+              <Button type="button" onClick={() => {
+                if (abortController.current) {
+                  abortController.current.abort();
+                }
+              }} className="bg-red-500 hover:bg-red-600">
+                <X className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={!input.trim() || isUploading} className="bg-brand-green hover:bg-brand-green/90">
+                <Send className="h-5 w-5" />
+              </Button>
+            )}
           </form>
         </Card>
       </div>
